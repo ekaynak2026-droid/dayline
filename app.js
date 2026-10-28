@@ -9,7 +9,7 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const T=iso(TODAY);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const byTime=(a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:0;
 const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
-const VERSION='1.0';
+const VERSION='1.1';
 
 const ICON={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -30,7 +30,7 @@ const remindSelect=(id,val)=>`<select id="${id}">${REMIND.map(([v,l])=>`<option 
 const hasRemind=x=>x.remind!==''&&x.remind!=null;
 
 /* ---------- storage (IndexedDB, falls back to localStorage) ---------- */
-const empty=()=>({v:1,tasks:[],events:[],notes:[],vault:null,fired:{},installDismissed:false,lastBackup:null});
+const empty=()=>({v:1,tasks:[],events:[],notes:[],vault:null,fired:{},installDismissed:false,lastBackup:null,sync:null});
 const dbp=new Promise(res=>{try{const r=indexedDB.open('dayline',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}});
 async function idbGet(k){const d=await dbp;if(!d){try{return JSON.parse(localStorage.getItem('dayline-'+k))}catch(e){return null}}
   return new Promise(res=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)})}
@@ -39,6 +39,7 @@ async function idbSet(k,v){const d=await dbp;if(!d){localStorage.setItem('daylin
 let S=empty(), askedPersist=false;
 async function save(){
   try{await idbSet('state',S)}catch(e){toast('Could not save. Your phone may be out of space.')}
+  window.Sync?.schedule();
   if(!askedPersist&&navigator.storage&&navigator.storage.persist){askedPersist=true;navigator.storage.persist().catch(()=>{})}
 }
 
@@ -358,8 +359,10 @@ function settingsSheet(){
     <h4>Reminders</h4>
     <p class="firstrun" style="margin:0">${remindState} Reminders pop up when Dayline is open or running in the background. For events you must not miss, use "Also add to my phone's calendar" on the event.</p>
     ${perm==='default'?'<button class="primary" id="st-remind">Turn on reminders</button>':''}
+    <h4>Sync between devices</h4>
+    <div id="st-sync"></div>
     <h4>Backup</h4>
-    <p class="firstrun" style="margin:0">Everything is stored only on this phone. Save a backup file now and then, for example to iCloud Drive or Google Drive. ${S.lastBackup?`Last backup: ${ago(S.lastBackup)}.`:'You have not made a backup yet.'}</p>
+    <p class="firstrun" style="margin:0">${S.sync?.uid?'Your data is also kept in your sync account.':'Everything is stored only on this device.'} Save a backup file now and then, for example to iCloud Drive or Google Drive. ${S.lastBackup?`Last backup: ${ago(S.lastBackup)}.`:'You have not made a backup yet.'}</p>
     <button class="choice" id="st-backup"><span class="ico">${ICON.save}</span><span><b>Save a backup file</b><span>Locked notes stay encrypted inside it</span></span></button>
     <label class="choice" for="st-file" style="margin:0;text-transform:none;letter-spacing:0;font-size:inherit;color:inherit;font-weight:inherit;cursor:pointer"><span class="ico">${ICON.open}</span><span><b>Restore from a backup file</b><span>Replaces what is on this phone</span></span></label><input type="file" id="st-file" accept="application/json,.json" hidden>
     <h4>Locked notes</h4>
@@ -369,6 +372,7 @@ function settingsSheet(){
     <p class="fine">Dayline ${VERSION}</p>
     <div class="actions"><button class="primary" data-close>Done</button></div></div>`,p=>{
     p.querySelector('#st-remind')?.addEventListener('click',enableReminders);
+    window.Sync?window.Sync.mount(p.querySelector('#st-sync')):p.querySelector('#st-sync').innerHTML='<p class="firstrun" style="margin:0">Sync is not available.</p>';
     p.querySelector('#st-install')?.addEventListener('click',runInstall);
     p.querySelector('#st-backup').onclick=async()=>{S.lastBackup=Date.now();await save();download(`dayline-backup-${iso(new Date())}.json`,JSON.stringify({app:'dayline',saved:new Date().toISOString(),state:S}),'application/json');toast('Backup file saved')};
     p.querySelector('#st-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{
@@ -380,7 +384,7 @@ function settingsSheet(){
 function confirmRestore(st,saved){
   openSheet(`<h3>Restore this backup?</h3><div class="warnbox">This replaces all tasks, events and notes on this phone with the backup${saved?` from ${fmt(new Date(saved),{day:'numeric',month:'long',year:'numeric'})}`:''}: ${st.tasks.length} tasks, ${st.events.length} events, ${st.notes.length+(st.vault?.count||0)} notes.</div>
     <div class="actions"><button class="ghost" data-close>Cancel</button><button class="primary" id="rs-go">Restore</button></div>`,p=>{
-    p.querySelector('#rs-go').onclick=async()=>{S={...empty(),...st};lockVault();await save();closeSheet();renderAll();toast('Backup restored')};
+    p.querySelector('#rs-go').onclick=async()=>{S={...empty(),...st,sync:S.sync};lockVault();await save();closeSheet();renderAll();toast('Backup restored')};
   });
 }
 function forgotPin(){
@@ -409,5 +413,6 @@ document.addEventListener('visibilitychange',()=>{
 (async()=>{
   const saved=await idbGet('state');if(saved)S={...empty(),...saved};
   renderAll();show();checkReminders();setInterval(checkReminders,30000);
+  window.daylineBooted=true;window.Sync?.start();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

@@ -142,3 +142,28 @@ The test found one bug: a reminder set for a time that had already passed earlie
 - Reminders while the app is fully closed need push messages or a store app (see step 8).
 - Repeating tasks and events ("every Monday") are not in this first version.
 - Sharing a list with someone else (like a family shopping list) is not in this version.
+
+## Step 12: Sync between devices (`sync.js`, `firebase-config.js`)
+
+Added in version 1.1 so the phone and computer show the same data.
+
+- **Where the data goes.** Firebase is Google's online database. Each task, event and note is saved as one record under your account (`users/<your account>/items/<id>`). The rules in Firebase let only you, when signed in, read or write there.
+- **Signing in.** Email and password (Firebase Authentication). The Google button was left out on purpose, because Google's sign-in pop-up doesn't work reliably inside home-screen apps on iPhone.
+- **Finding what changed.** Rather than changing every button, `sync.js` takes a short "fingerprint" of every item after each save (`fp`) and compares it with the fingerprint from the last sync. Items that changed are uploaded. Items that disappeared are uploaded as "deleted", so they disappear on the other devices too.
+- **Receiving changes.** A live connection (`onSnapshot`) gets other devices' changes within seconds and puts them into your lists.
+- **First sign-in merges.** The app first reads what is already online, then uploads anything that only exists on this device. So signing in on a second device adds to your data and doesn't wipe it.
+- **Locked notes** are synced as the same encrypted bundle that's stored on the phone, so they leave the device already scrambled. A device that has no locked notes yet is not allowed to "upload nothing" over the ones that are online.
+- **Offline.** Firebase keeps its own copy on the device and sends queued changes when you're back online. The service worker also saves the Firebase program files, so the app still opens offline.
+- **Settings** (`firebase-config.js`) holds the address of your Firebase project. It isn't secret. If it's empty, the app works exactly like version 1.0 and Settings says sync is not set up.
+
+**How I tested sync:** I simulated a phone and a computer, each with its own data, connected to a shared fake online database that answers exactly like Firebase. Results:
+1. The phone signed in: its 2 tasks and the locked note were uploaded, and the test password was **not** readable on the server. ✔
+2. The computer signed in: both devices then showed all 3 tasks (phone's and computer's merged). ✔
+3. Ticking a task on the phone ticked it on the computer. ✔
+4. Deleting a task on the computer removed it from the phone. ✔
+5. The computer opened the locked notes with the PIN. ✔ Then the phone edited the locked note, and the computer showed the new text. ✔
+6. An event added on the computer appeared on the phone. ✔
+7. Reopening the app caused **zero** unnecessary uploads. ✔
+8. A task added while signed out was uploaded after signing in again. ✔
+
+The test caught one real bug, which I fixed: a device that had no locked notes could, with unlucky timing, upload "no locked notes" and wipe them for the other devices.

@@ -1,6 +1,6 @@
 // Service worker: keeps a copy of the app on the phone so it opens without internet.
-const CACHE = 'dayline-v1';
-const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest',
+const CACHE = 'dayline-v2';
+const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'sync.js', 'firebase-config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -14,12 +14,13 @@ self.addEventListener('activate', e => {
 });
 
 // App files: use the network when online (so updates arrive), fall back to the saved copy offline.
-// Fonts: use the saved copy first, since they never change.
+// Fonts and the sync library: use the saved copy first.
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.host === 'fonts.googleapis.com' || url.host === 'fonts.gstatic.com') {
+  // The sync library files are versioned, so they never change either.
+  if (url.host === 'fonts.googleapis.com' || url.host === 'fonts.gstatic.com' || (url.host === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/'))) {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
       const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res;
     })));
