@@ -9,7 +9,7 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const T=iso(TODAY);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const byTime=(a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:0;
 const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
-const VERSION='1.1';
+const VERSION='1.2';
 
 const ICON={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -171,6 +171,8 @@ function taskSheet(t,date){
 function remindHint(x){if(hasRemind(x)&&'Notification' in window&&Notification.permission==='default')setTimeout(()=>toast('Turn on reminders in Settings to get alerts'),2300)}
 
 /* ---------- calendar ---------- */
+// Events, plus tasks that have a time, sorted by time: these are "pinned" on the calendar.
+const pinned=k=>[...S.events.filter(e=>e.date===k),...S.tasks.filter(t=>t.date===k&&t.time)].sort(byTime);
 function renderCal(){
   const v=$('#v-calendar'),y=calMonth.getFullYear(),m=calMonth.getMonth();
   const first=new Date(y,m,1),offset=(first.getDay()+6)%7,start=addDays(first,-offset);
@@ -178,14 +180,14 @@ function renderCal(){
   let h=`<header class="top"><h1>${fmt(first,{month:'long'})} <span style="color:var(--muted);font-weight:600">${y}</span></h1><div class="monthnav"><button data-act="prev" aria-label="Previous month">${ICON.left}</button><button data-act="next" aria-label="Next month">${ICON.right}</button></div></header>`;
   h+=`<div class="wk">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(w=>`<span>${w}</span>`).join('')}</div><div class="grid">`;
   for(let i=0;i<weeks*7;i++){
-    const d=addDays(start,i),k=iso(d),evs=S.events.filter(e=>e.date===k).sort(byTime);
-    h+=`<button class="cell${d.getMonth()!==m?' out':''}${k===T?' today':''}${k===selDay?' sel':''}" data-act="day" data-date="${k}" aria-label="${fmt(d,{weekday:'long',day:'numeric',month:'long'})}, ${evs.length} events"><span class="n">${d.getDate()}</span>${evs.slice(0,2).map(e=>`<span class="ev c${e.color}">${esc(e.title)}</span>`).join('')}${evs.length>2?`<span class="more">+${evs.length-2} more</span>`:''}</button>`;
+    const d=addDays(start,i),k=iso(d),pins=pinned(k);
+    h+=`<button class="cell${d.getMonth()!==m?' out':''}${k===T?' today':''}${k===selDay?' sel':''}" data-act="day" data-date="${k}" aria-label="${fmt(d,{weekday:'long',day:'numeric',month:'long'})}, ${pins.length} pinned"><span class="n">${d.getDate()}</span>${pins.slice(0,2).map(x=>x.title!=null?`<span class="ev c${x.color}">${esc(x.title)}</span>`:`<span class="ev tk${x.done?' done':''}">${esc(x.text)}</span>`).join('')}${pins.length>2?`<span class="more">+${pins.length-2} more</span>`:''}</button>`;
   }
   h+='</div>';
-  const sd=fromIso(selDay),evs=S.events.filter(e=>e.date===selDay).sort(byTime),tc=S.tasks.filter(t=>t.date===selDay&&!t.done).length;
+  const sd=fromIso(selDay),pins=pinned(selDay),tc=S.tasks.filter(t=>t.date===selDay&&!t.done&&!t.time).length;
   h+=`<section class="agenda"><h3>${selDay===T?'Today, ':''}${fmt(sd,{weekday:'long',day:'numeric',month:'long'})}</h3>`;
-  h+=evs.length?`<ul class="items">${evs.map(evRow).join('')}</ul>`:`<p class="empty">Nothing pinned on this day yet.</p>`;
-  h+=`<div class="linkrow"><button class="linkbtn" data-act="add-event">+ Add event</button>${tc?`<button class="linkbtn" data-act="see-tasks">See ${tc} open task${tc>1?'s':''}</button>`:''}${selDay!==T?'<button class="linkbtn" data-act="go-today">Back to today</button>':''}</div></section>`;
+  h+=pins.length?`<ul class="items">${pins.map(x=>x.title!=null?evRow(x):taskRow(x)).join('')}</ul>`:`<p class="empty">Nothing pinned on this day yet.</p>`;
+  h+=`<div class="linkrow"><button class="linkbtn" data-act="add-event">+ Add event</button>${tc?`<button class="linkbtn" data-act="see-tasks">See ${tc} more task${tc>1?'s':''} without a time</button>`:''}${selDay!==T?'<button class="linkbtn" data-act="go-today">Back to today</button>':''}</div></section>`;
   v.innerHTML=h;
 }
 $('#v-calendar').addEventListener('click',e=>{
@@ -196,6 +198,8 @@ $('#v-calendar').addEventListener('click',e=>{
     case 'day':{selDay=b.dataset.date;const d=fromIso(selDay);if(d.getMonth()!==calMonth.getMonth())calMonth=new Date(d.getFullYear(),d.getMonth(),1);renderCal();break}
     case 'go-today':selDay=T;calMonth=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);renderCal();break;
     case 'add-event':eventSheet(null,selDay);break;
+    case 'toggle':{const t=S.tasks.find(x=>x.id===b.closest('[data-id]').dataset.id);t.done=!t.done;save();renderAll();break}
+    case 'edit-task':taskSheet(S.tasks.find(x=>x.id===b.closest('[data-id]').dataset.id));break;
     case 'edit-event':eventSheet(S.events.find(x=>x.id===b.closest('[data-id]').dataset.id));break;
     case 'see-tasks':{const k=selDay;location.hash='#tasks';setTimeout(()=>scrollToDay(k,true),30);break}
   }

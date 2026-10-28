@@ -74,9 +74,9 @@ Nothing is sent to any server. That is why backups (step 10) matter.
 ## Step 5: The Calendar tab (`renderCal`)
 
 1. The month grid always starts on **Monday**. The code finds the 1st of the month, counts how many days it is after Monday (`offset`), and starts the grid that many days earlier, so the first row shows the end of the previous month faded out.
-2. Each day box shows the date number and up to two event labels, plus "+N more" if there are more.
+2. Each day box shows the date number and up to two "pinned" labels, plus "+N more" if there are more. Pinned means events, plus any task that has a time (added in version 1.2, `pinned()`). Tasks have a plain outlined label, events have a coloured one, and finished tasks are crossed out.
 3. Today's number has the yellow circle. The day you tapped gets a blue outline.
-4. Under the grid, the "agenda" card lists the events on the selected day. It has buttons to add an event, to jump to that day's tasks, or to go back to today.
+4. Under the grid, the "agenda" card lists the events and timed tasks on the selected day, in time order. You can tick tasks off right there. It has buttons to add an event, to jump to that day's tasks, or to go back to today.
 5. The event panel (`eventSheet`) has a name, date, time (leave it empty for all-day), reminder and colour.
 6. **"Also add to my phone's calendar"** builds a small standard calendar file (`.ics`, made by `icsFor`) that iPhone and Android calendars understand. Opening it adds the event, with its alarm, to your phone's own calendar.
 

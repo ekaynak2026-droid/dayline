@@ -89,6 +89,8 @@ h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02
 .cell.today .n{background:var(--sun);color:#3A2C00;font-weight:800}
 .cell.sel{border-color:var(--accent)}
 .cell .ev{font-size:10px;line-height:1.25;font-weight:600;background:color-mix(in srgb,var(--ec) 18%,var(--surface));color:var(--ink);border-left:3px solid var(--ec);border-radius:3px;padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .ev.tk{--ec:var(--ink);background:transparent;border:1px solid var(--line);border-left:3px solid var(--muted)}
+.cell .ev.tk.done{color:var(--done);text-decoration:line-through}
 .cell .more{font-size:10px;color:var(--muted);text-align:center;font-weight:600}
 .agenda{margin-top:18px;background:var(--surface);border-radius:20px;padding:14px 16px 8px}
 .agenda h3{font-family:var(--display);font-weight:600;font-size:19px;margin:0 0 4px}
