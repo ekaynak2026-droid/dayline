@@ -9,7 +9,7 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const T=iso(TODAY);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const byTime=(a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:0;
 const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
-const VERSION='1.3';
+const VERSION='1.4';
 
 const ICON={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -245,15 +245,15 @@ const fileKind=n=>{const e=(String(n).split('.').pop()||'').toLowerCase();return
 const sizeText=b=>b<1048576?Math.max(1,Math.round(b/1024))+' KB':(b/1048576).toFixed(1)+' MB';
 const blobToB64=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej(r.error);r.readAsDataURL(b)});
 async function getFile(id){let rec=await idbGet('file:'+id);if(!rec&&window.Sync)rec=await window.Sync.fetchFile(id).catch(()=>null);return rec}
+// "Save a copy": hands the file to the phone, which offers to open it in another app or save it.
 function showBlob(blob,name,type){
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.rel='noopener';
-  if(type==='application/pdf'||/\.pdf$/i.test(name))a.target='_blank';else a.download=name;
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.rel='noopener';a.download=name;
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 async function openFile(f){
   const rec=await getFile(f.id);
   if(!rec){toast(navigator.onLine?'This file has not reached this device yet. Try again in a moment.':'Connect to the internet to open this file on this device');return}
-  showBlob(rec.blob,f.name,rec.type||f.type);
+  Viewer.open(rec.blob,f.name,rec.type||f.type);
 }
 const filesOf=n=>n.files||[];
 
@@ -332,7 +332,7 @@ function noteSheet(n,isNew,pickPhoto){
     drawFiles();
     flist.addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const id=li.dataset.fid,f=files.find(x=>x.id===id);
       if(e.target.closest('[data-rmf]')){files.splice(files.indexOf(f),1);pending.delete(id);drawFiles()}
-      else if(e.target.closest('[data-openf]')){const pd=pending.get(id);pd?showBlob(pd.blob,f.name,pd.type):openFile(f)}});
+      else if(e.target.closest('[data-openf]')){const pd=pending.get(id);pd?Viewer.open(pd.blob,f.name,pd.type):openFile(f)}});
     p.querySelector('#fn-doc').onchange=e=>{for(const f of e.target.files){
       if(f.size>MAXFILE){toast(`${f.name} is bigger than 10 MB`);continue}
       const id=uid();pending.set(id,{name:f.name,type:f.type,size:f.size,blob:f});files.push({id,name:f.name,type:f.type,size:f.size})}

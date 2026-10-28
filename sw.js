@@ -1,6 +1,7 @@
 // Service worker: keeps a copy of the app on the phone so it opens without internet.
-const CACHE = 'dayline-v5';
-const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'sync.js', 'firebase-config.js', 'manifest.webmanifest',
+const CACHE = 'dayline-v6';
+const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'sync.js', 'viewer.js', 'firebase-config.js',
+  'vendor/pdf.min.js', 'vendor/pdf.worker.min.js', 'vendor/mammoth.browser.min.js', 'vendor/xlsx.full.min.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
