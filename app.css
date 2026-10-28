@@ -219,3 +219,16 @@ h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02
 .vsheet table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 .vsheet td{border:1px solid #d5d9de;padding:5px 8px;white-space:nowrap;min-width:48px}
 .vsheet tr:first-child td{background:#f1f3f5;font-weight:700;position:sticky;top:0}
+
+/* 📂 files on tasks and events */
+.task,.evrow{flex-wrap:wrap;column-gap:12px;row-gap:0}
+.fold{flex:none;display:inline-flex;align-items:center;gap:2px;min-width:36px;height:34px;justify-content:center;border-radius:10px;font-size:17px;opacity:.55}
+.fold.has{opacity:1}
+.fold small{font-size:11px;font-weight:800;color:var(--accent)}
+.rowfiles{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding:0 0 10px 36px;min-width:0}
+.evrow .rowfiles{padding-left:36px}
+.fchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:4px 8px 4px 4px;font-size:12.5px}
+.fchip .kind,.fname .kind{flex:none;font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--accent-ink);background:var(--accent);border-radius:5px;padding:2px 5px}
+.fchip .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files-ed .x svg{width:18px;height:18px}
+.filebtn span[aria-hidden]{font-size:17px}

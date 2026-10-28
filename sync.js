@@ -67,7 +67,7 @@
       b.commit().then(()=>{lastOk=Date.now();error='';paint()}).catch(e=>{error=e.code==='permission-denied'?'The online database refused the change. Check the security rules from the setup guide.':'Could not upload: '+(e.message||e);paint()});
     }
   }
-  function wantedFiles(){const w=new Set();S.notes.forEach(n=>(n.files||[]).forEach(f=>w.add(f.id)));return w}
+  function wantedFiles(){const w=new Set();[...S.notes,...S.tasks,...S.events].forEach(n=>(n.files||[]).forEach(f=>w.add(f.id)));return w}
   const CH=700000;  // characters per piece; a multiple of 4 so each piece is whole base64
   async function uploadFile(id,rec){
     const data=await blobToB64(rec.blob),n=Math.max(1,Math.ceil(data.length/CH)),ref=filesCol().doc(id);

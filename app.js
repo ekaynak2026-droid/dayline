@@ -9,7 +9,7 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const T=iso(TODAY);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const byTime=(a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:0;
 const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
-const VERSION='1.4';
+const VERSION='1.5';
 
 const ICON={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -112,8 +112,8 @@ async function enableReminders(){
 }
 
 /* ---------- tasks ---------- */
-const taskRow=t=>`<li class="task ${t.done?'done':''}" data-id="${t.id}"><button class="check" data-act="toggle" aria-label="${t.done?'Mark as not done':'Mark as done'}">${t.done?ICON.check:''}</button><button class="t" data-act="edit-task">${esc(t.text)}</button>${hasRemind(t)&&!t.done?ICON.bell:''}${t.time?`<span class="time">${t.time}</span>`:''}</li>`;
-const evRow=e=>`<li class="evrow c${e.color}" data-id="${e.id}"><span class="bar"></span><button class="t" data-act="edit-event">${esc(e.title)}</button>${hasRemind(e)?ICON.bell:''}<span class="time">${e.time||'All day'}</span></li>`;
+const taskRow=t=>`<li class="task ${t.done?'done':''}" data-id="${t.id}"><button class="check" data-act="toggle" aria-label="${t.done?'Mark as not done':'Mark as done'}">${t.done?ICON.check:''}</button><button class="t" data-act="edit-task">${esc(t.text)}</button>${hasRemind(t)&&!t.done?ICON.bell:''}${t.time?`<span class="time">${t.time}</span>`:''}${folderBtn(t)}${fileChips(t)}</li>`;
+const evRow=e=>`<li class="evrow c${e.color}" data-id="${e.id}"><span class="bar"></span><button class="t" data-act="edit-event">${esc(e.title)}</button>${hasRemind(e)?ICON.bell:''}<span class="time">${e.time||'All day'}</span>${folderBtn(e)}${fileChips(e)}</li>`;
 function dayKeys(){
   const set=new Set();for(let i=-14;i<=60;i++)set.add(iso(addDays(TODAY,i)));
   S.tasks.forEach(t=>set.add(t.date));S.events.forEach(e=>{if(e.date>=iso(addDays(TODAY,-14)))set.add(e.date)});
@@ -140,6 +140,7 @@ function renderTasks(){
 function scrollToDay(k,smooth){const v=$('#v-tasks'),sec=v.querySelector(`section[data-day="${k}"]`);if(!sec)return;v.scrollTo({top:sec.offsetTop-v.querySelector('.top').offsetHeight-2,behavior:smooth?'smooth':'auto'})}
 $('#v-tasks').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const id=b.closest('[data-id]')?.dataset.id;
+  if(rowFileAction(b))return;
   switch(b.dataset.act){
     case 'toggle':{const t=S.tasks.find(x=>x.id===id);t.done=!t.done;save();renderTasks();break}
     case 'edit-task':taskSheet(S.tasks.find(x=>x.id===id));break;
@@ -162,11 +163,13 @@ function taskSheet(t,date){
     <label for="ft-text">Task</label><input id="ft-text" value="${esc(t.text)}" placeholder="What do you need to do?" autocomplete="off">
     <div class="row2"><div><label for="ft-date">Day</label><input type="date" id="ft-date" value="${t.date}"></div><div><label for="ft-time">Time (optional)</label><input type="time" id="ft-time" value="${t.time}"></div></div>
     <label for="ft-remind">Reminder</label>${remindSelect('ft-remind',t.remind)}
+    <div id="ft-files"></div>
     <div class="actions">${isNew?'':'<button type="button" class="ghost danger" id="ft-del">Delete</button>'}<button type="button" class="ghost" data-close>Cancel</button><button class="primary">Save</button></div></form>`,p=>{
-    p.querySelector('#f-task').onsubmit=e=>{e.preventDefault();const txt=p.querySelector('#ft-text').value.trim();if(!txt){p.querySelector('#ft-text').focus();return}
-      t.text=txt;t.date=p.querySelector('#ft-date').value||T;t.time=p.querySelector('#ft-time').value;t.remind=p.querySelector('#ft-remind').value;t.rset=Date.now();
+    const box=fileBox(p.querySelector('#ft-files'),filesOf(t));
+    p.querySelector('#f-task').onsubmit=async e=>{e.preventDefault();const txt=p.querySelector('#ft-text').value.trim();if(!txt){p.querySelector('#ft-text').focus();return}
+      await box.commit(filesOf(t));t.files=[...box.files];t.text=txt;t.date=p.querySelector('#ft-date').value||T;t.time=p.querySelector('#ft-time').value;t.remind=p.querySelector('#ft-remind').value;t.rset=Date.now();
       if(isNew)S.tasks.push(t);save();closeSheet();renderAll();toast(isNew?'Task added':'Task saved');remindHint(t)};
-    p.querySelector('#ft-del')?.addEventListener('click',()=>{S.tasks=S.tasks.filter(x=>x.id!==t.id);save();closeSheet();renderAll();toast('Task deleted')});
+    p.querySelector('#ft-del')?.addEventListener('click',async()=>{await dropFiles(t);S.tasks=S.tasks.filter(x=>x.id!==t.id);save();closeSheet();renderAll();toast('Task deleted')});
     if(isNew)p.querySelector('#ft-text').focus();
   });
 }
@@ -194,6 +197,7 @@ function renderCal(){
 }
 $('#v-calendar').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
+  if(rowFileAction(b))return;
   switch(b.dataset.act){
     case 'prev':calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);renderCal();break;
     case 'next':calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);renderCal();break;
@@ -225,13 +229,15 @@ function eventSheet(ev,date){
     <div class="row2"><div><label for="fe-date">Date</label><input type="date" id="fe-date" value="${ev.date}"></div><div><label for="fe-time">Time (empty = all day)</label><input type="time" id="fe-time" value="${ev.time}"></div></div>
     <label for="fe-remind">Reminder</label>${remindSelect('fe-remind',ev.remind)}
     <label>Colour</label><div class="swatches">${sw}</div>
+    <div id="fe-files"></div>
     <div><button type="button" class="ghost" id="fe-ics" style="padding-left:0;color:var(--accent)">Also add to my phone's calendar</button></div>
     <div class="actions">${isNew?'':'<button type="button" class="ghost danger" id="fe-del">Delete</button>'}<button type="button" class="ghost" data-close>Cancel</button><button class="primary">Save</button></div></form>`,p=>{
     const read=()=>({...ev,title:p.querySelector('#fe-title').value.trim(),date:p.querySelector('#fe-date').value||T,time:p.querySelector('#fe-time').value,remind:p.querySelector('#fe-remind').value,color:+(p.querySelector('[name=fe-color]:checked')?.value||1)});
-    p.querySelector('#f-ev').onsubmit=e=>{e.preventDefault();const n=read();if(!n.title){p.querySelector('#fe-title').focus();return}
-      Object.assign(ev,n);ev.rset=Date.now();if(isNew)S.events.push(ev);save();closeSheet();selDay=ev.date;const d=fromIso(ev.date);calMonth=new Date(d.getFullYear(),d.getMonth(),1);renderAll();toast(isNew?'Event pinned':'Event saved');remindHint(ev)};
+    const box=fileBox(p.querySelector('#fe-files'),filesOf(ev));
+    p.querySelector('#f-ev').onsubmit=async e=>{e.preventDefault();const n=read();if(!n.title){p.querySelector('#fe-title').focus();return}
+      await box.commit(filesOf(ev));n.files=[...box.files];Object.assign(ev,n);ev.rset=Date.now();if(isNew)S.events.push(ev);save();closeSheet();selDay=ev.date;const d=fromIso(ev.date);calMonth=new Date(d.getFullYear(),d.getMonth(),1);renderAll();toast(isNew?'Event pinned':'Event saved');remindHint(ev)};
     p.querySelector('#fe-ics').onclick=()=>{const n=read();if(!n.title){toast('Give the event a name first');return}download((n.title.replace(/[^\w ]+/g,'').trim()||'event')+'.ics',icsFor(n),'text/calendar')};
-    p.querySelector('#fe-del')?.addEventListener('click',()=>{S.events=S.events.filter(x=>x.id!==ev.id);save();closeSheet();renderAll();toast('Event deleted')});
+    p.querySelector('#fe-del')?.addEventListener('click',async()=>{await dropFiles(ev);S.events=S.events.filter(x=>x.id!==ev.id);save();closeSheet();renderAll();toast('Event deleted')});
     if(isNew)p.querySelector('#fe-title').focus();
   });
 }
@@ -256,6 +262,57 @@ async function openFile(f){
   Viewer.open(rec.blob,f.name,rec.type||f.type);
 }
 const filesOf=n=>n.files||[];
+const ATTACH_ACCEPT=DOC_ACCEPT+',image/*';
+const isImage=f=>String(f.type).startsWith('image/')||/\.(jpe?g|png|gif|webp|heic)$/i.test(f.name);
+const kindOf=f=>isImage(f)?'Photo':fileKind(f.name);
+// Big phone photos are made smaller (longest side 2000 px) so they save and sync quickly.
+function shrinkImage(f){return new Promise(res=>{
+  if(!/^image\/(jpeg|png|webp|heic|heif)$/.test(f.type)||f.size<1.5e6)return res(f);
+  const u=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{const sc=Math.min(1,2000/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);
+    c.toBlob(b=>{if(!b)return res(f);res(new File([b],f.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'}))},'image/jpeg',.85)};
+  img.onerror=()=>{URL.revokeObjectURL(u);res(f)};img.src=u})}
+async function saveFileCopy(f){const rec=await getFile(f.id);if(!rec){toast('This file is not on this device yet');return}showBlob(rec.blob,f.name,rec.type||f.type)}
+// The 📂 button on each task and event, and the files listed under it.
+const folderBtn=x=>`<button class="fold${filesOf(x).length?' has':''}" data-act="files" aria-label="Files and photos (${filesOf(x).length})"><span aria-hidden="true">📂</span>${filesOf(x).length?`<small>${filesOf(x).length}</small>`:''}</button>`;
+const fileChips=x=>filesOf(x).length?`<div class="rowfiles">${filesOf(x).map(f=>`<button class="fchip" data-act="openf" data-fid="${f.id}"><span class="kind">${kindOf(f)}</span><span class="nm">${esc(f.name)}</span></button>`).join('')}</div>`:'';
+/* A reusable "Files and photos" box for the edit windows. Nothing is stored until commit() runs on Save. */
+function fileBox(root,initial,label='📂 Files and photos'){
+  const files=[...initial],pending=new Map(),inp='fb-'+uid();
+  root.innerHTML=`<label>${label}</label><ul class="files-ed"></ul><label class="filebtn" for="${inp}"><span aria-hidden="true">📂</span><span>Attach a file or photo</span></label><input type="file" id="${inp}" accept="${ATTACH_ACCEPT}" multiple hidden>`;
+  const ul=root.querySelector('ul');
+  const draw=()=>{ul.innerHTML=files.map(f=>`<li data-fid="${f.id}"><button type="button" class="fname" data-openf aria-label="Preview ${esc(f.name)}"><span class="kind">${kindOf(f)}</span><span class="nm">${esc(f.name)}</span><small>${sizeText(f.size)}</small></button><button type="button" class="x" data-savef aria-label="Download ${esc(f.name)}">${ICON.save}</button><button type="button" class="x" data-rmf aria-label="Remove ${esc(f.name)}">×</button></li>`).join('')};
+  draw();
+  ul.addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const id=li.dataset.fid,f=files.find(x=>x.id===id),pd=pending.get(id);
+    if(e.target.closest('[data-rmf]')){files.splice(files.indexOf(f),1);pending.delete(id);draw()}
+    else if(e.target.closest('[data-savef]'))pd?showBlob(pd.blob,f.name,pd.type):saveFileCopy(f);
+    else if(e.target.closest('[data-openf]'))pd?Viewer.open(pd.blob,f.name,pd.type):openFile(f)});
+  root.querySelector('input').onchange=async e=>{for(let f of [...e.target.files]){
+      f=await shrinkImage(f);
+      if(f.size>MAXFILE){toast(`${f.name} is bigger than 10 MB`);continue}
+      const id=uid();pending.set(id,{name:f.name,type:f.type,size:f.size,blob:f});files.push({id,name:f.name,type:f.type,size:f.size})}
+    e.target.value='';draw()};
+  return{files,
+    async commit(before){for(const[id,rec]of pending)if(files.some(f=>f.id===id))await idbSet('file:'+id,rec);
+      for(const f of before)if(!files.some(x=>x.id===f.id))await idbDel('file:'+f.id);pending.clear()}};
+}
+async function dropFiles(x){for(const f of filesOf(x))await idbDel('file:'+f.id)}
+// Opened by the 📂 button in the lists: attach, preview, download or remove, then Save.
+function filesSheet(x){
+  const name=x.text??x.title;
+  openSheet(`<h3><span aria-hidden="true">📂</span> ${esc(name)}</h3><form id="f-files"><div id="fs-box"></div>
+    <div class="actions"><button type="button" class="ghost" data-close>Cancel</button><button class="primary">Save</button></div></form>`,p=>{
+    const box=fileBox(p.querySelector('#fs-box'),filesOf(x),'Files and photos');
+    p.querySelector('#f-files').onsubmit=async e=>{e.preventDefault();await box.commit(filesOf(x));x.files=[...box.files];await save();closeSheet();renderAll();toast('Files saved')};
+  });
+}
+const findItem=id=>S.tasks.find(x=>x.id===id)||S.events.find(x=>x.id===id);
+function rowFileAction(b){
+  const x=findItem(b.closest('[data-id]')?.dataset.id);if(!x)return false;
+  if(b.dataset.act==='files'){filesSheet(x);return true}
+  if(b.dataset.act==='openf'){const f=filesOf(x).find(f=>f.id===b.dataset.fid);if(f)openFile(f);return true}
+  return false;
+}
 
 /* ---------- notes ---------- */
 function ago(ts){const d=new Date(ts);d.setHours(0,0,0,0);const n=Math.round((TODAY-d)/864e5);return n<=0?'Today':n===1?'Yesterday':fmt(d,{day:'numeric',month:'short'})}
@@ -315,7 +372,7 @@ function noteSheet(n,isNew,pickPhoto){
     ${w.type==='list'?`<label>Items</label><ul class="items-ed" id="fn-items">${(w.items.length?w.items:[{t:'',done:false}]).map(itemRow).join('')}</ul><div><button type="button" class="ghost" id="fn-add" style="padding-left:0;color:var(--accent)">+ Add item</button></div>`
       :`<label for="fn-body">Note</label><textarea id="fn-body" rows="5" placeholder="Write anything…">${esc(w.body)}</textarea>`}
     <div class="photo-ed"><img id="fn-img" ${w.photo?`src="${w.photo}"`:'hidden'} alt="Attached photo"><label class="filebtn" for="fn-file">${ICON.camera}<span id="fn-filelbl">${w.photo?'Change photo':'Attach a photo'}</span></label><input type="file" id="fn-file" accept="image/*" hidden><button type="button" class="ghost" id="fn-rmphoto" ${w.photo?'':'hidden'}>Remove photo</button></div>
-    <div id="fn-docs" ${w.locked?'hidden':''}><label>Files</label><ul class="files-ed" id="fn-flist"></ul><label class="filebtn" for="fn-doc">${ICON.clip}<span>Attach a file (PDF, Word, Excel)</span></label><input type="file" id="fn-doc" accept="${DOC_ACCEPT}" multiple hidden></div>
+    <div id="fn-docs" ${w.locked?'hidden':''}></div>
     <label class="toggle"><input type="checkbox" id="fn-lock" ${w.locked?'checked':''}> Keep in locked notes (encrypted, needs your PIN)</label>
     <div class="actions">${isNew?'':'<button type="button" class="ghost danger" id="fn-del">Delete</button>'}<button type="button" class="ghost" data-close>Cancel</button><button class="primary">Save</button></div></form>`,p=>{
     const list=p.querySelector('#fn-items');
@@ -327,16 +384,7 @@ function noteSheet(n,isNew,pickPhoto){
     }
     const file=p.querySelector('#fn-file'),img=p.querySelector('#fn-img'),rm=p.querySelector('#fn-rmphoto');
     file.onchange=()=>{const f=file.files[0];if(!f)return;shrink(f,url=>{w.photo=url;img.src=url;img.hidden=false;rm.hidden=false;p.querySelector('#fn-filelbl').textContent='Change photo'})};
-    const files=[...filesOf(w)],pending=new Map(),flist=p.querySelector('#fn-flist');
-    const drawFiles=()=>{flist.innerHTML=files.map(f=>`<li data-fid="${f.id}"><button type="button" class="fname" data-openf><span class="kind">${fileKind(f.name)}</span><span class="nm">${esc(f.name)}</span><small>${sizeText(f.size)}</small></button><button type="button" class="x" data-rmf aria-label="Remove ${esc(f.name)}">×</button></li>`).join('')};
-    drawFiles();
-    flist.addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const id=li.dataset.fid,f=files.find(x=>x.id===id);
-      if(e.target.closest('[data-rmf]')){files.splice(files.indexOf(f),1);pending.delete(id);drawFiles()}
-      else if(e.target.closest('[data-openf]')){const pd=pending.get(id);pd?Viewer.open(pd.blob,f.name,pd.type):openFile(f)}});
-    p.querySelector('#fn-doc').onchange=e=>{for(const f of e.target.files){
-      if(f.size>MAXFILE){toast(`${f.name} is bigger than 10 MB`);continue}
-      const id=uid();pending.set(id,{name:f.name,type:f.type,size:f.size,blob:f});files.push({id,name:f.name,type:f.type,size:f.size})}
-      e.target.value='';drawFiles()};
+    const box=fileBox(p.querySelector('#fn-docs'),filesOf(w),'📂 Files'),files=box.files;
     const lockBox=p.querySelector('#fn-lock');
     lockBox.onchange=()=>{if(lockBox.checked&&files.length){lockBox.checked=false;toast('Notes with files cannot be locked yet. Remove the files first.');return}p.querySelector('#fn-docs').hidden=lockBox.checked};
     rm.onclick=()=>{w.photo=null;img.hidden=true;img.removeAttribute('src');rm.hidden=true;p.querySelector('#fn-filelbl').textContent='Attach a photo'};
@@ -347,8 +395,8 @@ function noteSheet(n,isNew,pickPhoto){
       else w.body=p.querySelector('#fn-body').value;
       if(!w.title&&!w.body&&!w.items.length&&!w.photo&&!files.length){toast('Write something first');return}
       w.locked=p.querySelector('#fn-lock').checked;w.updated=Date.now();
-      const gone=filesOf(n).filter(f=>!files.some(x=>x.id===f.id));w.files=files;
-      const done=async()=>{try{for(const[id,rec]of pending)if(files.some(f=>f.id===id))await idbSet('file:'+id,rec);for(const f of gone)await idbDel('file:'+f.id);await storeNote(w);closeSheet();renderNotes();toast(w.locked?'Saved and locked':'Note saved')}catch(err){toast('Could not save the note')}};
+      w.files=[...files];
+      const done=async()=>{try{await box.commit(filesOf(n));await storeNote(w);closeSheet();renderNotes();toast(w.locked?'Saved and locked':'Note saved')}catch(err){toast('Could not save the note')}};
       if(w.locked&&!vaultKey){closeSheet();ensureVault(done)}else done();
     };
     p.querySelector('#fn-del')?.addEventListener('click',async()=>{await removeNote(w);closeSheet();renderNotes();toast('Note deleted')});
@@ -419,7 +467,7 @@ function settingsSheet(){
     p.querySelector('#st-backup').onclick=async()=>{
       S.lastBackup=Date.now();await save();toast('Preparing backup…');
       const files={},missing=[];
-      for(const n of S.notes)for(const f of filesOf(n)){const rec=await getFile(f.id);if(rec)files[f.id]={name:rec.name,type:rec.type,size:rec.size,data:await blobToB64(rec.blob)};else missing.push(f.name)}
+      for(const n of [...S.notes,...S.tasks,...S.events])for(const f of filesOf(n)){const rec=await getFile(f.id);if(rec)files[f.id]={name:rec.name,type:rec.type,size:rec.size,data:await blobToB64(rec.blob)};else missing.push(f.name)}
       download(`dayline-backup-${iso(new Date())}.json`,JSON.stringify({app:'dayline',saved:new Date().toISOString(),state:S,files}),'application/json');
       toast(missing.length?`Backup saved, but ${missing.length} file(s) were not on this device`:'Backup file saved')};
     p.querySelector('#st-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{

@@ -54,7 +54,7 @@
   async function open(blob,name,type){
     close();const my=++gen;
     el=document.createElement('div');el.className='viewer';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label',name);
-    el.innerHTML=`<header class="vbar"><button class="iconbtn" data-vclose aria-label="Close">×</button><b class="vname">${esc(name)}</b><button class="ghost" data-vsave>Save a copy</button></header><div class="vbody"><p class="vmsg">Opening…</p></div>`;
+    el.innerHTML=`<header class="vbar"><button class="iconbtn" data-vclose aria-label="Close">×</button><b class="vname">${esc(name)}</b><button class="ghost" data-vsave>Download</button></header><div class="vbody"><p class="vmsg">Opening…</p></div>`;
     document.body.append(el);
     el.querySelector('[data-vclose]').onclick=close;
     el.querySelector('[data-vsave]').onclick=()=>showBlob(blob,name,type);
@@ -66,10 +66,10 @@
       else if(['xlsx','xls','xlsm','csv','ods'].includes(e))await renderSheet(body,blob);
       else if(e==='txt'||String(type).startsWith('text/'))body.innerHTML=`<pre class="vdoc vtext">${esc(await blob.text())}</pre>`;
       else if(String(type).startsWith('image/')){const u=URL.createObjectURL(blob);body.innerHTML=`<img class="vpage" src="${u}" alt="${esc(name)}">`}
-      else body.innerHTML=`<p class="vmsg">This kind of file (${esc(e.toUpperCase()||'unknown')}) can't be shown inside Dayline.${e==='doc'?' Older Word files (.doc) need Word; files saved as .docx open here.':''} Tap <b>Save a copy</b> to open it in another app.</p>`;
+      else body.innerHTML=`<p class="vmsg">This kind of file (${esc(e.toUpperCase()||'unknown')}) can't be shown inside Dayline.${e==='doc'?' Older Word files (.doc) need Word; files saved as .docx open here.':''} Tap <b>Download</b> to open it in another app.</p>`;
     }catch(err){
       if(my!==gen)return;
-      body.innerHTML=`<p class="vmsg">${err.message==='load'?'The viewer could not load. Connect to the internet once and try again.':'Dayline could not read this file. It may be damaged or password-protected.'} You can still tap <b>Save a copy</b>.</p>`;
+      body.innerHTML=`<p class="vmsg">${err.message==='load'?'The viewer could not load. Connect to the internet once and try again.':'Dayline could not read this file. It may be damaged or password-protected.'} You can still tap <b>Download</b>.</p>`;
     }
   }
   function close(){gen++;if(el){el.remove();el=null}}
