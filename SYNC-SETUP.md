@@ -11,7 +11,7 @@ You'll need a Google account (for example your Gmail). Firebase's free plan is f
 4. When it asks about **Google Analytics**, switch it **off**. Then click **Create project** and wait for it to finish.
 
 ## 2. Register Dayline as a web app
-1. On the project's home page, click the **web icon `</>`** (under "Get started by adding Firebase to your app").
+1. In the top-left corner, click the **⚙︎ gear icon** next to "Project Overview" and choose **Project settings**. On the **General** tab, scroll down to **Your apps** and click the **`</>`** icon (or **Add app → Web**).
 2. Under App nickname, type `Dayline`. Leave "Firebase Hosting" **unticked**. Click **Register app**.
 3. You'll see a block of code that contains `const firebaseConfig = { ... }`. **Copy that whole block and paste it to me in our chat.** It looks like this:
    ```
@@ -25,7 +25,7 @@ You'll need a Google account (for example your Gmail). Firebase's free plan is f
    };
    ```
    These values aren't secret. They tell the app where your database is, and your password and the rules in step 4 are what protect your data.
-4. Click **Continue to console**.
+4. Click **Continue to console**. If you need the block again later, it stays under **Project settings → General → Your apps → Config**.
 
 ## 3. Turn on email sign-in
 1. In the left menu, open **Build → Authentication** (it may be under "All products"), then click **Get started**.
