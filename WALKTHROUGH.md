@@ -85,7 +85,8 @@ Nothing is sent to any server. That is why backups (step 10) matter.
 - There are two kinds of note: **text** and **checklist**. Either kind can have a **photo** attached. "Photo note" in the menu is a text note that opens the photo picker straight away.
 - **Photos are shrunk** before saving (`shrink`). They are resized to at most 1200 pixels and saved as JPEG, so a 4 MB phone photo becomes about 150 KB. That keeps the app fast and the storage small.
 - In a checklist, pressing Enter on an item adds a new line under it, like a real list app.
-- The chips at the top (All, Checklists, With photos) filter what is shown.
+- The chips at the top (All, Checklists, With photos, With files) filter what is shown.
+- **Attached files** (version 1.3): any note or checklist can hold PDF, Word, Excel and similar files, up to 10 MB each (`#fn-doc` in `noteSheet`). The file itself is stored in the app database under its own key (`file:<id>`), and the note only keeps a list of names and sizes. That way saving a task stays fast even when you have large files. Tapping a file opens it: PDFs open in a viewer, and Word and Excel files open in the matching app or the phone's preview (`openFile`). Notes with files can't be locked yet, because the files would also need to be encrypted.
 
 ## Step 7: Locked notes (section "locked notes")
 
@@ -116,7 +117,7 @@ This is the most security-sensitive part, so it is done properly:
 
 ## Step 10: Backup and restore (`settingsSheet`)
 
-- **Save a backup file** downloads one file (`dayline-backup-2026-10-27.json`) with everything in it. Locked notes stay encrypted inside it. Save it to iCloud Drive or Google Drive.
+- **Save a backup file** downloads one file (`dayline-backup-2026-10-27.json`) with everything in it, including attached files. Locked notes stay encrypted inside it. Save it to iCloud Drive or Google Drive.
 - **Restore from a backup file** reads such a file, shows what it contains (number of tasks, events and notes) and asks you to confirm before replacing anything.
 - This is also how you move to a new phone.
 
@@ -167,3 +168,12 @@ Added in version 1.1 so the phone and computer show the same data.
 8. A task added while signed out was uploaded after signing in again. ✔
 
 The test caught one real bug, which I fixed: a device that had no locked notes could, with unlucky timing, upload "no locked notes" and wipe them for the other devices.
+
+## Step 13: Files in sync (`sync.js`: `uploadFile`, `fetchFile`, `prefetch`)
+
+- One online database record can hold at most 1 MB, so each file is cut into pieces of about 0.5 MB (`users/<you>/files/<id>/chunks/0, 1, 2…`). This lets files sync on Firebase's free plan. Google's separate file-storage service would need a paid plan with a credit card.
+- The file's description (name, size, number of pieces) is written **last**, so another device never reads a half-uploaded file.
+- Another device downloads new files in the background (`prefetch`), so after that they open without internet too.
+- Removing a file from a note, or deleting the note, also removes the file online and on your other devices.
+
+**How I tested it:** in the two-device simulation, the phone attached a small PDF and a 1.5 MB Excel file. The Excel file was split into 3 pieces, and the computer rebuilt both files **byte for byte** identical (checked with a fingerprint of the contents). Removing the Excel file on the phone deleted its pieces online and the copy on the computer. Separately, a backup with a Word file restored correctly on a fresh device, and tapping the file opened it with the right name.

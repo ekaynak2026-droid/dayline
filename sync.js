@@ -5,7 +5,9 @@
    so they can only be read with your PIN.
    How changes are found: after every save we compare each item with a fingerprint of what was last
    synced. Changed items are uploaded; items that disappeared are uploaded as "deleted".
-   Changes from other devices arrive through a live listener and replace the local copy. */
+   Changes from other devices arrive through a live listener and replace the local copy.
+   Attached files are cut into pieces of about 0.5 MB (users/{you}/files/{id}/chunks/0,1,2…) because one
+   database record can hold at most 1 MB. This keeps everything on Firebase's free plan. */
 (function(){
   const CFG=window.DAYLINE_FIREBASE;
   const SDK='https://www.gstatic.com/firebasejs/10.12.2/';
@@ -28,6 +30,7 @@
     auth=firebase.auth();
   }
   const items=()=>db.collection('users').doc(user.uid).collection('items');
+  const filesCol=()=>db.collection('users').doc(user.uid).collection('files');
   const vaultDoc=()=>db.collection('users').doc(user.uid).collection('meta').doc('vault');
   const st=()=>S.sync;
 
@@ -43,16 +46,51 @@
       ops.push([items().doc(id),{kind,data:clean(x),updated:x.updated,deleted:false}]);
     }
     const now=collect();
-    for(const id of Object.keys(last)){if(id==='__vault'||now.has(id))continue;delete last[id];ops.push([items().doc(id),{deleted:true,updated:Date.now()}])}
+    for(const id of Object.keys(last)){if(id==='__vault'||id.startsWith('f:')||now.has(id))continue;delete last[id];ops.push([items().doc(id),{deleted:true,updated:Date.now()}])}
     const vf=fp(S.vault||null);
     // Only after the online copy of the locked notes has been read, so a device without them never wipes them.
     if(vaultSeen&&last.__vault!==vf&&!(S.vault==null&&last.__vault===undefined)){last.__vault=vf;ops.push([vaultDoc(),{vault:S.vault?clean(S.vault):null,updated:Date.now()}])}
+    // Files: upload new ones, remove ones no note uses any more.
+    const want=wantedFiles();
+    for(const id of want){
+      if(last['f:'+id])continue;
+      const rec=await idbGet('file:'+id);if(!rec)continue;
+      last['f:'+id]=1;ops.push(null);
+      uploadFile(id,rec).then(()=>{lastOk=Date.now();paint()}).catch(e=>{delete last['f:'+id];error='Could not upload '+rec.name+': '+(e.message||e);paint()});
+    }
+    for(const k of Object.keys(last))if(k.startsWith('f:')&&!want.has(k.slice(2))){const id=k.slice(2);delete last[k];ops.push(null);idbDel('file:'+id);deleteRemoteFile(id).catch(()=>{})}
     if(!ops.length)return;
     await idbSet('state',S);
     for(let i=0;i<ops.length;i+=400){
-      const b=db.batch();ops.slice(i,i+400).forEach(([ref,data])=>b.set(ref,data));
+      const part=ops.slice(i,i+400).filter(Boolean);if(!part.length)continue;
+      const b=db.batch();part.forEach(([ref,data])=>b.set(ref,data));
       b.commit().then(()=>{lastOk=Date.now();error='';paint()}).catch(e=>{error=e.code==='permission-denied'?'The online database refused the change. Check the security rules from the setup guide.':'Could not upload: '+(e.message||e);paint()});
     }
+  }
+  function wantedFiles(){const w=new Set();S.notes.forEach(n=>(n.files||[]).forEach(f=>w.add(f.id)));return w}
+  const CH=700000;  // characters per piece; a multiple of 4 so each piece is whole base64
+  async function uploadFile(id,rec){
+    const data=await blobToB64(rec.blob),n=Math.max(1,Math.ceil(data.length/CH)),ref=filesCol().doc(id);
+    for(let i=0;i<n;i+=8){const b=db.batch();for(let j=i;j<Math.min(n,i+8);j++)b.set(ref.collection('chunks').doc(String(j)),{d:data.slice(j*CH,(j+1)*CH)});await b.commit()}
+    await ref.set({name:rec.name,type:rec.type||'',size:rec.size,chunks:n,updated:Date.now()});  // written last, so a half-uploaded file is never read
+  }
+  async function deleteRemoteFile(id){
+    const ref=filesCol().doc(id),cs=await ref.collection('chunks').get(),b=db.batch();
+    cs.docs.forEach(d=>b.delete(d.ref));b.delete(ref);await b.commit();
+  }
+  async function fetchFile(id){
+    if(!user||!ready)return null;
+    const ref=filesCol().doc(id),m=await ref.get();if(!m.exists)return null;
+    const md=m.data();let data='';
+    for(let i=0;i<md.chunks;i++){const c=await ref.collection('chunks').doc(String(i)).get();if(!c.exists)return null;data+=c.data().d}
+    const rec={name:md.name,type:md.type,size:md.size,blob:new Blob([unb64(data)],{type:md.type})};
+    await idbSet('file:'+id,rec);return rec;
+  }
+  // Download files that arrived from other devices, so they also open without internet later.
+  let fetching=false;
+  async function prefetch(){
+    if(fetching||!user||!ready)return;fetching=true;
+    try{for(const id of wantedFiles()){if(!user)break;if(!(await idbGet('file:'+id)))await fetchFile(id).catch(()=>{})}}finally{fetching=false}
   }
   function schedule(){if(user&&ready&&!timer)timer=setTimeout(push,800)}
 
@@ -68,10 +106,11 @@
       if(!d.data||!LISTS[d.kind])return;
       const f=fp(d.data);if(last[id]===f)return;
       upsertLocal(d.kind,d.data);last[id]=f;changed=true;
+      (d.data.files||[]).forEach(x=>{last['f:'+x.id]=1});  // already online: never upload it again from here
     });
     if(!snap.metadata.fromCache){lastOk=Date.now();error=''}
     if(!ready&&(st().primed||!snap.metadata.fromCache)){ready=true;st().primed=true;changed=true;setTimeout(push,0)}
-    if(changed){idbSet('state',S);renderTasks();renderCal();renderNotes()}
+    if(changed){idbSet('state',S);renderTasks();renderCal();renderNotes();setTimeout(prefetch,500);schedule()}
     paint();
   }
   async function onVault(doc){
@@ -137,6 +176,6 @@
     try{await boot();auth.onAuthStateChanged(onUser)}
     catch(e){started=false;paint();window.addEventListener('online',start,{once:true})}
   }
-  window.Sync={start,schedule,mount(el){mountEl=el;paint()},_push:push,_state:()=>({user,ready,error})};
+  window.Sync={start,schedule,fetchFile,mount(el){mountEl=el;paint()},_push:push,_state:()=>({user,ready,error})};
   if(window.daylineBooted)start();
 })();

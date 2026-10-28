@@ -9,7 +9,7 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const T=iso(TODAY);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const byTime=(a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:0;
 const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
-const VERSION='1.2';
+const VERSION='1.3';
 
 const ICON={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -23,6 +23,7 @@ const ICON={
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>',
   save:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>',
+  clip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7.1-7.1l8.1-8.1a3.3 3.3 0 014.7 4.7l-8.1 8.1a1.7 1.7 0 01-2.4-2.4l7.4-7.4"/></svg>',
   open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19.5h14"/></svg>'
 };
 const REMIND=[['','No reminder'],['0','At the time'],['10','10 minutes before'],['60','1 hour before'],['1440','1 day before']];
@@ -36,6 +37,7 @@ async function idbGet(k){const d=await dbp;if(!d){try{return JSON.parse(localSto
   return new Promise(res=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)})}
 async function idbSet(k,v){const d=await dbp;if(!d){localStorage.setItem('dayline-'+k,JSON.stringify(v));return}
   return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function idbDel(k){const d=await dbp;if(!d)return;return new Promise(res=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').delete(k);t.oncomplete=res;t.onerror=res})}
 let S=empty(), askedPersist=false;
 async function save(){
   try{await idbSet('state',S)}catch(e){toast('Could not save. Your phone may be out of space.')}
@@ -234,20 +236,42 @@ function eventSheet(ev,date){
   });
 }
 
+/* ---------- attached files (PDF, Word, Excel…) ----------
+   The file itself is kept in the app database under "file:<id>", outside the main bundle so saving stays fast.
+   The note only lists the files: [{id,name,type,size}]. */
+const MAXFILE=10*1024*1024;
+const DOC_ACCEPT='.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.rtf,.odt,.ods,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
+const fileKind=n=>{const e=(String(n).split('.').pop()||'').toLowerCase();return e==='pdf'?'PDF':['doc','docx','odt','rtf'].includes(e)?'Word':['xls','xlsx','csv','ods'].includes(e)?'Excel':['ppt','pptx'].includes(e)?'Slides':e.toUpperCase().slice(0,5)||'File'};
+const sizeText=b=>b<1048576?Math.max(1,Math.round(b/1024))+' KB':(b/1048576).toFixed(1)+' MB';
+const blobToB64=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej(r.error);r.readAsDataURL(b)});
+async function getFile(id){let rec=await idbGet('file:'+id);if(!rec&&window.Sync)rec=await window.Sync.fetchFile(id).catch(()=>null);return rec}
+function showBlob(blob,name,type){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.rel='noopener';
+  if(type==='application/pdf'||/\.pdf$/i.test(name))a.target='_blank';else a.download=name;
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+async function openFile(f){
+  const rec=await getFile(f.id);
+  if(!rec){toast(navigator.onLine?'This file has not reached this device yet. Try again in a moment.':'Connect to the internet to open this file on this device');return}
+  showBlob(rec.blob,f.name,rec.type||f.type);
+}
+const filesOf=n=>n.files||[];
+
 /* ---------- notes ---------- */
 function ago(ts){const d=new Date(ts);d.setHours(0,0,0,0);const n=Math.round((TODAY-d)/864e5);return n<=0?'Today':n===1?'Yesterday':fmt(d,{day:'numeric',month:'short'})}
 function noteCard(n){
   let prev;
   if(n.type==='list'){const left=n.items.filter(i=>!i.done).length;prev=`<ul class="mini">${n.items.slice(0,5).map(i=>`<li class="${i.done?'done':''}">${esc(i.t)}</li>`).join('')}</ul><span class="meta">${left} of ${n.items.length} left</span>`}
   else prev=n.body?`<p class="body">${esc(n.body)}</p>`:'';
+  const fl=filesOf(n);if(fl.length)prev+=`<span class="meta">${ICON.clip}<span class="nm">${fl.length===1?esc(fl[0].name):fl.length+' files'}</span></span>`;
   return `<button class="note" data-act="open-note" data-id="${n.id}">${n.photo?`<img src="${n.photo}" alt="">`:''}<strong>${esc(n.title||'Untitled')}</strong>${prev}<span class="meta">${n.locked?ICON.lock:''}${ago(n.updated)}</span></button>`;
 }
 function renderNotes(){
   const v=$('#v-notes'),open=[...S.notes].sort((a,b)=>b.updated-a.updated),locked=[...vaultNotes].sort((a,b)=>b.updated-a.updated);
-  const shown=open.filter(n=>noteFilter==='all'||(noteFilter==='lists'&&n.type==='list')||(noteFilter==='photos'&&n.photo));
+  const shown=open.filter(n=>noteFilter==='all'||(noteFilter==='lists'&&n.type==='list')||(noteFilter==='photos'&&n.photo)||(noteFilter==='files'&&filesOf(n).length));
   const chip=(k,l)=>`<button class="pill${noteFilter===k?' on':''}" data-act="filter" data-f="${k}">${l}</button>`;
-  let h=`<header class="top"><h1>Notes</h1></header><div class="chips">${chip('all','All')}${chip('lists','Checklists')}${chip('photos','With photos')}</div>`;
-  h+=`<div class="notes">${shown.length?shown.map(noteCard).join(''):`<p class="emptystate">${noteFilter==='photos'?'No photo notes yet. Tap + and choose "Photo note".':noteFilter==='lists'?'No checklists yet. Tap + and choose "Checklist".':'No notes yet. Tap + to write one, like a shopping list.'}</p>`}</div>`;
+  let h=`<header class="top"><h1>Notes</h1></header><div class="chips">${chip('all','All')}${chip('lists','Checklists')}${chip('photos','With photos')}${chip('files','With files')}</div>`;
+  h+=`<div class="notes">${shown.length?shown.map(noteCard).join(''):`<p class="emptystate">${noteFilter==='photos'?'No photo notes yet. Tap + and choose "Photo note".':noteFilter==='files'?'No files yet. Open a note or checklist and tap "Attach a file".':noteFilter==='lists'?'No checklists yet. Tap + and choose "Checklist".':'No notes yet. Tap + to write one, like a shopping list.'}</p>`}</div>`;
   h+=`<div class="section-h"><h2>${ICON.lock} Locked notes</h2>${vaultKey?`<button class="pill" data-act="relock">Lock now</button>`:''}</div>`;
   if(vaultKey)h+=locked.length?`<div class="notes">${locked.map(noteCard).join('')}</div>`:`<p class="emptystate">No locked notes yet. Tap + and choose "Locked note".</p>`;
   else{const c=S.vault?.count||0;h+=`<button class="vault" data-act="unlock"><span class="ico">${ICON.lock}</span><span><b>${S.vault?`${c} locked note${c===1?'':'s'}`:'Set up locked notes'}</b><span>${S.vault?'Tap and enter your PIN to open':'For passwords, codes and other private things. Choose a 6-digit PIN.'}</span></span></button>`}
@@ -281,7 +305,7 @@ async function storeNote(w){
   if(w.locked)vaultNotes.push(w);else S.notes.push(w);
   if(w.locked||wasLocked)await sealVault();else await save();
 }
-async function removeNote(w){const wasLocked=vaultNotes.some(x=>x.id===w.id);S.notes=S.notes.filter(x=>x.id!==w.id);vaultNotes=vaultNotes.filter(x=>x.id!==w.id);if(wasLocked)await sealVault();else await save()}
+async function removeNote(w){for(const f of filesOf(w))await idbDel('file:'+f.id);const wasLocked=vaultNotes.some(x=>x.id===w.id);S.notes=S.notes.filter(x=>x.id!==w.id);vaultNotes=vaultNotes.filter(x=>x.id!==w.id);if(wasLocked)await sealVault();else await save()}
 function noteSheet(n,isNew,pickPhoto){
   const w=JSON.parse(JSON.stringify(n));w.items=w.items||[];
   const itemRow=i=>`<li><input type="checkbox" class="li-done" ${i.done?'checked':''} aria-label="Done"><input class="li-text" value="${esc(i.t)}" placeholder="Item" aria-label="Item" enterkeyhint="next"><button type="button" class="x" data-rm aria-label="Remove item">×</button></li>`;
@@ -291,6 +315,7 @@ function noteSheet(n,isNew,pickPhoto){
     ${w.type==='list'?`<label>Items</label><ul class="items-ed" id="fn-items">${(w.items.length?w.items:[{t:'',done:false}]).map(itemRow).join('')}</ul><div><button type="button" class="ghost" id="fn-add" style="padding-left:0;color:var(--accent)">+ Add item</button></div>`
       :`<label for="fn-body">Note</label><textarea id="fn-body" rows="5" placeholder="Write anything…">${esc(w.body)}</textarea>`}
     <div class="photo-ed"><img id="fn-img" ${w.photo?`src="${w.photo}"`:'hidden'} alt="Attached photo"><label class="filebtn" for="fn-file">${ICON.camera}<span id="fn-filelbl">${w.photo?'Change photo':'Attach a photo'}</span></label><input type="file" id="fn-file" accept="image/*" hidden><button type="button" class="ghost" id="fn-rmphoto" ${w.photo?'':'hidden'}>Remove photo</button></div>
+    <div id="fn-docs" ${w.locked?'hidden':''}><label>Files</label><ul class="files-ed" id="fn-flist"></ul><label class="filebtn" for="fn-doc">${ICON.clip}<span>Attach a file (PDF, Word, Excel)</span></label><input type="file" id="fn-doc" accept="${DOC_ACCEPT}" multiple hidden></div>
     <label class="toggle"><input type="checkbox" id="fn-lock" ${w.locked?'checked':''}> Keep in locked notes (encrypted, needs your PIN)</label>
     <div class="actions">${isNew?'':'<button type="button" class="ghost danger" id="fn-del">Delete</button>'}<button type="button" class="ghost" data-close>Cancel</button><button class="primary">Save</button></div></form>`,p=>{
     const list=p.querySelector('#fn-items');
@@ -302,15 +327,28 @@ function noteSheet(n,isNew,pickPhoto){
     }
     const file=p.querySelector('#fn-file'),img=p.querySelector('#fn-img'),rm=p.querySelector('#fn-rmphoto');
     file.onchange=()=>{const f=file.files[0];if(!f)return;shrink(f,url=>{w.photo=url;img.src=url;img.hidden=false;rm.hidden=false;p.querySelector('#fn-filelbl').textContent='Change photo'})};
+    const files=[...filesOf(w)],pending=new Map(),flist=p.querySelector('#fn-flist');
+    const drawFiles=()=>{flist.innerHTML=files.map(f=>`<li data-fid="${f.id}"><button type="button" class="fname" data-openf><span class="kind">${fileKind(f.name)}</span><span class="nm">${esc(f.name)}</span><small>${sizeText(f.size)}</small></button><button type="button" class="x" data-rmf aria-label="Remove ${esc(f.name)}">×</button></li>`).join('')};
+    drawFiles();
+    flist.addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const id=li.dataset.fid,f=files.find(x=>x.id===id);
+      if(e.target.closest('[data-rmf]')){files.splice(files.indexOf(f),1);pending.delete(id);drawFiles()}
+      else if(e.target.closest('[data-openf]')){const pd=pending.get(id);pd?showBlob(pd.blob,f.name,pd.type):openFile(f)}});
+    p.querySelector('#fn-doc').onchange=e=>{for(const f of e.target.files){
+      if(f.size>MAXFILE){toast(`${f.name} is bigger than 10 MB`);continue}
+      const id=uid();pending.set(id,{name:f.name,type:f.type,size:f.size,blob:f});files.push({id,name:f.name,type:f.type,size:f.size})}
+      e.target.value='';drawFiles()};
+    const lockBox=p.querySelector('#fn-lock');
+    lockBox.onchange=()=>{if(lockBox.checked&&files.length){lockBox.checked=false;toast('Notes with files cannot be locked yet. Remove the files first.');return}p.querySelector('#fn-docs').hidden=lockBox.checked};
     rm.onclick=()=>{w.photo=null;img.hidden=true;img.removeAttribute('src');rm.hidden=true;p.querySelector('#fn-filelbl').textContent='Attach a photo'};
     p.querySelector('#f-note').onsubmit=e=>{
       e.preventDefault();
       w.title=p.querySelector('#fn-title').value.trim();
       if(w.type==='list')w.items=[...list.querySelectorAll('li')].map(li=>({t:li.querySelector('.li-text').value.trim(),done:li.querySelector('.li-done').checked})).filter(i=>i.t);
       else w.body=p.querySelector('#fn-body').value;
-      if(!w.title&&!w.body&&!w.items.length&&!w.photo){toast('Write something first');return}
+      if(!w.title&&!w.body&&!w.items.length&&!w.photo&&!files.length){toast('Write something first');return}
       w.locked=p.querySelector('#fn-lock').checked;w.updated=Date.now();
-      const done=async()=>{try{await storeNote(w);closeSheet();renderNotes();toast(w.locked?'Saved and locked':'Note saved')}catch(err){toast('Could not save the note')}};
+      const gone=filesOf(n).filter(f=>!files.some(x=>x.id===f.id));w.files=files;
+      const done=async()=>{try{for(const[id,rec]of pending)if(files.some(f=>f.id===id))await idbSet('file:'+id,rec);for(const f of gone)await idbDel('file:'+f.id);await storeNote(w);closeSheet();renderNotes();toast(w.locked?'Saved and locked':'Note saved')}catch(err){toast('Could not save the note')}};
       if(w.locked&&!vaultKey){closeSheet();ensureVault(done)}else done();
     };
     p.querySelector('#fn-del')?.addEventListener('click',async()=>{await removeNote(w);closeSheet();renderNotes();toast('Note deleted')});
@@ -367,7 +405,7 @@ function settingsSheet(){
     <div id="st-sync"></div>
     <h4>Backup</h4>
     <p class="firstrun" style="margin:0">${S.sync?.uid?'Your data is also kept in your sync account.':'Everything is stored only on this device.'} Save a backup file now and then, for example to iCloud Drive or Google Drive. ${S.lastBackup?`Last backup: ${ago(S.lastBackup)}.`:'You have not made a backup yet.'}</p>
-    <button class="choice" id="st-backup"><span class="ico">${ICON.save}</span><span><b>Save a backup file</b><span>Locked notes stay encrypted inside it</span></span></button>
+    <button class="choice" id="st-backup"><span class="ico">${ICON.save}</span><span><b>Save a backup file</b><span>Includes attached files. Locked notes stay encrypted inside it</span></span></button>
     <label class="choice" for="st-file" style="margin:0;text-transform:none;letter-spacing:0;font-size:inherit;color:inherit;font-weight:inherit;cursor:pointer"><span class="ico">${ICON.open}</span><span><b>Restore from a backup file</b><span>Replaces what is on this phone</span></span></label><input type="file" id="st-file" accept="application/json,.json" hidden>
     <h4>Locked notes</h4>
     ${S.vault?`<button class="choice" id="st-pin"><span class="ico">${ICON.lock}</span><span><b>Change my PIN</b><span>You will need your current PIN first</span></span></button>
@@ -378,17 +416,23 @@ function settingsSheet(){
     p.querySelector('#st-remind')?.addEventListener('click',enableReminders);
     window.Sync?window.Sync.mount(p.querySelector('#st-sync')):p.querySelector('#st-sync').innerHTML='<p class="firstrun" style="margin:0">Sync is not available.</p>';
     p.querySelector('#st-install')?.addEventListener('click',runInstall);
-    p.querySelector('#st-backup').onclick=async()=>{S.lastBackup=Date.now();await save();download(`dayline-backup-${iso(new Date())}.json`,JSON.stringify({app:'dayline',saved:new Date().toISOString(),state:S}),'application/json');toast('Backup file saved')};
+    p.querySelector('#st-backup').onclick=async()=>{
+      S.lastBackup=Date.now();await save();toast('Preparing backup…');
+      const files={},missing=[];
+      for(const n of S.notes)for(const f of filesOf(n)){const rec=await getFile(f.id);if(rec)files[f.id]={name:rec.name,type:rec.type,size:rec.size,data:await blobToB64(rec.blob)};else missing.push(f.name)}
+      download(`dayline-backup-${iso(new Date())}.json`,JSON.stringify({app:'dayline',saved:new Date().toISOString(),state:S,files}),'application/json');
+      toast(missing.length?`Backup saved, but ${missing.length} file(s) were not on this device`:'Backup file saved')};
     p.querySelector('#st-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{
-      try{const d=JSON.parse(r.result),st=d.state||d;if(!Array.isArray(st.tasks)||!Array.isArray(st.events)||!Array.isArray(st.notes))throw 0;confirmRestore(st,d.saved)}catch(err){toast('That is not a Dayline backup file')}};r.readAsText(f)};
+      try{const d=JSON.parse(r.result),st=d.state||d;if(!Array.isArray(st.tasks)||!Array.isArray(st.events)||!Array.isArray(st.notes))throw 0;confirmRestore(st,d.saved,d.files||{})}catch(err){toast('That is not a Dayline backup file')}};r.readAsText(f)};
     p.querySelector('#st-pin')?.addEventListener('click',()=>ensureVault(()=>pinSheet('change')));
     p.querySelector('#st-forgot')?.addEventListener('click',forgotPin);
   });
 }
-function confirmRestore(st,saved){
+function confirmRestore(st,saved,files={}){
   openSheet(`<h3>Restore this backup?</h3><div class="warnbox">This replaces all tasks, events and notes on this phone with the backup${saved?` from ${fmt(new Date(saved),{day:'numeric',month:'long',year:'numeric'})}`:''}: ${st.tasks.length} tasks, ${st.events.length} events, ${st.notes.length+(st.vault?.count||0)} notes.</div>
     <div class="actions"><button class="ghost" data-close>Cancel</button><button class="primary" id="rs-go">Restore</button></div>`,p=>{
-    p.querySelector('#rs-go').onclick=async()=>{S={...empty(),...st,sync:S.sync};lockVault();await save();closeSheet();renderAll();toast('Backup restored')};
+    p.querySelector('#rs-go').onclick=async()=>{S={...empty(),...st,sync:S.sync};lockVault();
+      for(const[id,f]of Object.entries(files))await idbSet('file:'+id,{name:f.name,type:f.type,size:f.size,blob:new Blob([unb64(f.data)],{type:f.type})});await save();closeSheet();renderAll();toast('Backup restored')};
   });
 }
 function forgotPin(){
