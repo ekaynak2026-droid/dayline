@@ -1,5 +1,5 @@
 // Service worker: keeps a copy of the app on the phone so it opens without internet.
-const CACHE = 'dayline-v2';
+const CACHE = 'dayline-v3';
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'sync.js', 'firebase-config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
