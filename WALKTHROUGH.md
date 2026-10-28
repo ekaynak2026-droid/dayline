@@ -184,7 +184,7 @@ The test caught one real bug, which I fixed: a device that had no locked notes c
 
 - Every task and event in the lists (Tasks tab and the calendar's day list) has a **📂 button** (`folderBtn`). When files are attached, it shows how many, and the files appear as small labels under the item (`fileChips`). Tap a label to preview the file.
 - Tapping 📂 opens a small window (`filesSheet`) where you attach files or photos, preview them, download them (the ⬇ button), or remove them. Changes are only stored when you press **Save**.
-- The **Edit task** and **Edit event** windows have the same "📂 Files and photos" box. It's one shared piece of code (`fileBox`), which the notes also use now, so all three work exactly the same way.
+- The **Edit task** and **Edit event** windows have the same "📂 Files and photos" box. Attached files sit on the left (tap a name to open it, ⬇ to download it, × to remove it), and the **Attach file or photo** button sits on the right (version 1.5.1, `.fbox`). It's one shared piece of code (`fileBox`), which the notes also use now, so all three work exactly the same way.
 - **Photos** taken on a phone are often 3–5 MB. Dayline shrinks them to at most 2000 pixels on the longest side (`shrinkImage`), which keeps them sharp on screen but makes saving and syncing much faster. Other files are stored exactly as they are, up to 10 MB each.
 - Files on tasks and events are synced and included in backups just like files on notes. Deleting a task or event also deletes its files.
 

@@ -9,7 +9,7 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const T=iso(TODAY);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const byTime=(a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:0;
 const fmt=(d,o)=>d.toLocaleDateString('en-GB',o);
-const VERSION='1.5';
+const VERSION='1.5.1';
 
 const ICON={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -279,9 +279,10 @@ const fileChips=x=>filesOf(x).length?`<div class="rowfiles">${filesOf(x).map(f=>
 /* A reusable "Files and photos" box for the edit windows. Nothing is stored until commit() runs on Save. */
 function fileBox(root,initial,label='📂 Files and photos'){
   const files=[...initial],pending=new Map(),inp='fb-'+uid();
-  root.innerHTML=`<label>${label}</label><ul class="files-ed"></ul><label class="filebtn" for="${inp}"><span aria-hidden="true">📂</span><span>Attach a file or photo</span></label><input type="file" id="${inp}" accept="${ATTACH_ACCEPT}" multiple hidden>`;
+  // Attached files on the left (tap to open, ⬇ to download), the attach button on the right.
+  root.innerHTML=`<label>${label}</label><div class="fbox"><ul class="files-ed"></ul><label class="filebtn attach" for="${inp}"><span aria-hidden="true">📂</span><span>Attach file or photo</span></label></div><input type="file" id="${inp}" accept="${ATTACH_ACCEPT}" multiple hidden>`;
   const ul=root.querySelector('ul');
-  const draw=()=>{ul.innerHTML=files.map(f=>`<li data-fid="${f.id}"><button type="button" class="fname" data-openf aria-label="Preview ${esc(f.name)}"><span class="kind">${kindOf(f)}</span><span class="nm">${esc(f.name)}</span><small>${sizeText(f.size)}</small></button><button type="button" class="x" data-savef aria-label="Download ${esc(f.name)}">${ICON.save}</button><button type="button" class="x" data-rmf aria-label="Remove ${esc(f.name)}">×</button></li>`).join('')};
+  const draw=()=>{ul.innerHTML=files.length?files.map(f=>`<li data-fid="${f.id}"><button type="button" class="fname" data-openf aria-label="Preview ${esc(f.name)}"><span class="kind">${kindOf(f)}</span><span class="nm" title="${esc(f.name)} · ${sizeText(f.size)}">${esc(f.name)}</span></button><button type="button" class="x" data-savef aria-label="Download ${esc(f.name)}">${ICON.save}</button><button type="button" class="x" data-rmf aria-label="Remove ${esc(f.name)}">×</button></li>`).join(''):'<li class="nofiles">No files yet</li>'};
   draw();
   ul.addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const id=li.dataset.fid,f=files.find(x=>x.id===id),pd=pending.get(id);
     if(e.target.closest('[data-rmf]')){files.splice(files.indexOf(f),1);pending.delete(id);draw()}
