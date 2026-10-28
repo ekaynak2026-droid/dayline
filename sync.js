@@ -9,7 +9,7 @@
 (function(){
   const CFG=window.DAYLINE_FIREBASE;
   const SDK='https://www.gstatic.com/firebasejs/10.12.2/';
-  let auth=null, db=null, user=null, ready=false, vaultSeen=false, started=false, unsub=[], timer=null, lastOk=null, error='', mountEl=null;
+  let retry=null, auth=null, db=null, user=null, ready=false, vaultSeen=false, started=false, unsub=[], timer=null, lastOk=null, error='', mountEl=null;
 
   // Same content always gives the same text, whatever order the fields come back in.
   const stable=v=>Array.isArray(v)?'['+v.map(stable).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().filter(k=>v[k]!==undefined).map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}':JSON.stringify(v);
@@ -92,7 +92,8 @@
   }
   function listen(){
     unsub.forEach(u=>u());
-    const fail=e=>{error=e.code==='permission-denied'?'The online database refused access. Check the security rules from the setup guide.':'Sync stopped: '+(e.message||e);paint()};
+    const fail=e=>{error=e.code==='permission-denied'?'You are signed in, but the online database refused access. Publish the security rule from step 4 of the setup guide; Dayline tries again every 30 seconds.':'Sync paused: '+(e.message||e)+'. Trying again shortly.';paint();
+      clearTimeout(retry);const u=user;retry=setTimeout(()=>{if(user&&user===u){error='';listen();paint()}},30000)};
     unsub=[items().onSnapshot({includeMetadataChanges:true},onItems,fail),vaultDoc().onSnapshot(onVault,fail)];
   }
   function onUser(u){
