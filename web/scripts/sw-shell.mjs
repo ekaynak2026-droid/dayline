@@ -17,3 +17,11 @@ const sw = join(out, 'sw.js');
 const build = Date.now().toString(36);
 writeFileSync(sw, readFileSync(sw, 'utf8').replace('/*SHELL*/', files.map((f) => `'${f}'`).join(', ')).replace('__BUILD__', build));
 console.log(`sw.js: ${files.length} files, cache dayline-next-${build}`);
+
+// The test copy gets its own name on the home screen.
+if ((process.env.DAYLINE_TEST ?? '1') === '1') {
+  const mf = join(out, 'manifest.webmanifest');
+  const m = JSON.parse(readFileSync(mf, 'utf8'));
+  m.name = 'Dayline Planner (test)'; m.short_name = 'Dayline test';
+  writeFileSync(mf, JSON.stringify(m, null, 2));
+}
