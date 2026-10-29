@@ -127,11 +127,11 @@ function openExisting(name: string): Promise<IDBDatabase | null> {
     } catch { res(null); }
   });
 }
-/** Copies the main Dayline app's data into this copy, once. The main app's data is only read. */
-async function copyFromMainApp(): Promise<boolean> {
-  if (!COPY_FROM_DB) return false;
+/** Reads the main Dayline app's data on this device (test copy only). Nothing is changed there. */
+export async function readMainApp(): Promise<{ state: State; files: [string, unknown][] } | null> {
+  if (!COPY_FROM_DB) return null;
   const src = await openExisting(COPY_FROM_DB);
-  if (!src) return false;
+  if (!src) return null;
   const all: [IDBValidKey, unknown][] = await new Promise((res) => {
     try {
       const st = src.transaction('kv').objectStore('kv');
@@ -142,10 +142,16 @@ async function copyFromMainApp(): Promise<boolean> {
   });
   src.close();
   const state = all.find(([k]) => k === 'state')?.[1] as State | undefined;
-  if (!state) return false;
-  for (const [k, v] of all) if (typeof k === 'string' && k.startsWith('file:')) await idbSet(k, v);
+  if (!state) return null;
+  return { state, files: all.filter(([k]) => typeof k === 'string' && k.startsWith('file:')) as [string, unknown][] };
+}
+/** First start of the test copy: copies the main app's data from this device. */
+async function copyFromMainApp(): Promise<boolean> {
+  const main = await readMainApp();
+  if (!main) return false;
+  for (const [k, v] of main.files) await idbSet(k, v);
   // Start with sync switched off: this copy signs in on its own and uses its own online space.
-  app.S = { ...empty(), ...state, sync: null };
+  app.S = { ...empty(), ...main.state, sync: null };
   await idbSet('state', app.S);
   return true;
 }

@@ -217,6 +217,26 @@ const say = (e: any) => MSG[e.code] || e.message || String(e);
 /** Redraws the sync part of Settings. */
 function paint() { emit(); }
 
+/* ---------- test copy: read the main app's online data (read-only) ---------- */
+/** Everything the main Dayline app has synced online, or null when not signed in. Nothing is changed there. */
+export async function fetchMainOnline() {
+  if (!P || !user || !db) return null;
+  const main = userDoc();
+  const snap = await main.collection('items').get();
+  const items: { kind: string; data: any }[] = [];
+  snap.docs.forEach((d: any) => { const x = d.data(); if (x && !x.deleted && x.data && LISTS[x.kind]) items.push({ kind: x.kind, data: x.data }); });
+  const v = await main.collection('meta').doc('vault').get();
+  const vault = v.exists ? v.data().vault || null : null;
+  /** Downloads one attached file from the main app's online space. */
+  const getFile = async (id: string): Promise<FileRecord | null> => {
+    const ref = main.collection('files').doc(id), m = await ref.get(); if (!m.exists) return null;
+    const md = m.data(); let data = '';
+    for (let i = 0; i < md.chunks; i++) { const c = await ref.collection('chunks').doc(String(i)).get(); if (!c.exists) return null; data += c.data().d; }
+    return { name: md.name, type: md.type, size: md.size, blob: new Blob([unb64(data) as BlobPart], { type: md.type }) };
+  };
+  return { items, vault, getFile };
+}
+
 /* ---------- what Settings uses ---------- */
 export function syncStatus() {
   return { configured: !!FIREBASE.apiKey, booted: !!auth, email: user?.email as string | undefined, signedIn: !!user, ready, error, lastOk };

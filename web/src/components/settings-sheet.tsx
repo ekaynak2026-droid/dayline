@@ -10,6 +10,7 @@ import { ago, fmt, iso } from '@/lib/dates';
 import { canInstall, enableReminders, isIOS, notificationState, runInstall, standalone } from '@/lib/device';
 import { createAccount, resetPassword, signIn, signOut, syncStatus } from '@/lib/sync';
 import { TEST, VERSION } from '@/lib/config';
+import { importFromMain, type ImportResult } from '@/lib/import';
 import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
@@ -53,6 +54,35 @@ function SyncPanel() {
   );
 }
 
+/** Test copy only: brings in everything from the main Dayline app. */
+function CopyFromMain() {
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<ImportResult | null>(null);
+  const [err, setErr] = useState('');
+  const signedIn = syncStatus().signedIn;
+  const go = async () => {
+    setBusy(true); setErr(''); setRes(null);
+    try { const r = await importFromMain(); setRes(r); toast('Copied from Dayline'); }
+    catch { setErr('Something went wrong while copying. Check the internet connection and try again.'); }
+    setBusy(false);
+  };
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  return (
+    <div className="grid gap-2 bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">
+      <p className="m-0"><b>This is the test version.</b> It keeps its own copy of your data, so nothing you do here changes your main Dayline app.</p>
+      <p className="m-0">Tap below to bring in all your tasks, events, notes, files and locked notes from Dayline. {signedIn ? 'This includes everything synced from your other devices.' : 'Sign in under "Sync between devices" first to also bring in what is on your other devices.'} Locked notes keep the same PIN.</p>
+      <div><button type="button" disabled={busy} onClick={go} className={cls.primary}>{busy ? 'Copying…' : 'Copy my Dayline data'}</button></div>
+      {res && (
+        <p role="status" className="m-0">
+          {!res.fromDevice && !res.fromOnline ? 'No Dayline data was found on this device. Sign in to sync first, then try again.'
+            : <>Copied {plural(res.tasks, 'task')}, {plural(res.events, 'event')}, {plural(res.notes, 'note')} and {plural(res.files, 'file')}{res.locked ? ', plus your locked notes' : ''}.{res.missingFiles ? ` ${plural(res.missingFiles, 'file')} could not be found; open the main Dayline on the device that has them, let it sync, then copy again.` : ''}</>}
+        </p>
+      )}
+      {err && <p role="alert" className="m-0 text-[var(--danger)] font-semibold">{err}</p>}
+    </div>
+  );
+}
+
 function SettingsSheet() {
   const { S } = useApp();
   const perm = notificationState();
@@ -88,7 +118,7 @@ function SettingsSheet() {
     <Sheet>
       <h3 className={cls.h3}>Settings</h3>
       <div className="grid gap-2">
-        {TEST && <p className="m-0 text-[14px] bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3"><b>This is the test version.</b> It started with a copy of your Dayline data and keeps its own copy, so nothing you do here changes your main Dayline app.</p>}
+        {TEST && <CopyFromMain />}
 
         <h4 className={cls.h4}>Reminders</h4>
         <p className={cls.info}>{remindState} Reminders pop up when Dayline is open or running in the background. For events you must not miss, use &quot;Also add to my phone&apos;s calendar&quot; on the event.</p>
