@@ -1,5 +1,5 @@
 'use client';
-// The app's frame: the three tabs, the + button, edit windows, the file viewer and start-up.
+// The app's frame: the four tabs, the + button, edit windows, the file viewer and start-up.
 
 import React, { useEffect, useState } from 'react';
 import type { TabType } from '@/types';
@@ -17,11 +17,12 @@ import { TasksView, scrollToDay } from '@/components/tasks-view';
 import { CalendarView } from '@/components/calendar-view';
 import { getCalDay } from '@/lib/ui-state';
 import { NotesView, newNoteChooser } from '@/components/notes-view';
+import { HelperView } from '@/components/helper-view';
 import { editEvent, editTask } from '@/components/rows';
 import { Viewer } from '@/components/viewer';
 import { IconPlus } from '@/components/icons';
 
-const TABS: TabType[] = ['tasks', 'calendar', 'notes'];
+const TABS: TabType[] = ['tasks', 'calendar', 'notes', 'helper'];
 const tabFromHash = (): TabType => { const h = location.hash.slice(1) as TabType; return TABS.includes(h) ? h : 'tasks'; };
 
 /* Main app only: anything entered in the test version (which ran at /dayline/test/) is brought in,
@@ -90,12 +91,13 @@ export default function Home() {
           {tab === 'tasks' && <TasksView key="tasks" />}
           {tab === 'calendar' && <CalendarView key="cal" onSeeTasks={(k) => { setTab('tasks'); setTimeout(() => scrollToDay(k, true), 60); }} />}
           {tab === 'notes' && <NotesView key="notes" />}
+          {tab === 'helper' && <HelperView key="helper" onOpenDay={(k) => { setTab('tasks'); setTimeout(() => scrollToDay(k, true), 60); }} />}
         </main>
 
-        <button onClick={fab} aria-label={t(tab === 'tasks' ? 'Add task' : tab === 'calendar' ? 'Add event' : 'New note')}
+        {tab !== 'helper' && <button onClick={fab} aria-label={t(tab === 'tasks' ? 'Add task' : tab === 'calendar' ? 'Add event' : 'New note')}
           className="fixed right-[max(18px,env(safe-area-inset-right,0px))] md:right-[calc(50%-222px)] bottom-[calc(78px+env(safe-area-inset-bottom,0px))] z-20 w-[58px] h-[58px] rounded-[20px] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow)] flex items-center justify-center hover:opacity-95 active:scale-95 cursor-pointer">
           <IconPlus className="w-[26px] h-[26px]" />
-        </button>
+        </button>}
 
         {sheet}
 

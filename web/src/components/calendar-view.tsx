@@ -1,5 +1,5 @@
 'use client';
-// The Calendar tab: a month grid (Monday first) with pinned events and timed tasks, and the chosen day below.
+// The Calendar tab: a month grid (Monday first) with events and every task on its day, and the chosen day below.
 
 import React, { useEffect, useState } from 'react';
 import type { CalendarEvent, Task } from '@/types';
@@ -12,10 +12,10 @@ import { cls } from './ui';
 import { getCalDay, setCalDay } from '@/lib/ui-state';
 
 type Pin = (CalendarEvent & { kind: 'event' }) | (Task & { kind: 'task' });
-/** Events, plus tasks that have a time, sorted by time: these are "pinned" on the calendar. */
+/** Events and all tasks of a day, sorted by time (timed ones first): these are "pinned" on the calendar. */
 export const pinned = (k: string): Pin[] => [
   ...app.S.events.filter((e) => e.date === k).map((e) => ({ ...e, kind: 'event' as const })),
-  ...app.S.tasks.filter((t) => t.date === k && t.time).map((t) => ({ ...t, kind: 'task' as const })),
+  ...app.S.tasks.filter((t) => t.date === k).map((t) => ({ ...t, kind: 'task' as const })),
 ].sort(byTime);
 
 const monthOf = (k: string) => { const d = fromIso(k); return new Date(d.getFullYear(), d.getMonth(), 1); };
@@ -35,7 +35,7 @@ export function CalendarView({ onSeeTasks }: { onSeeTasks: (k: string) => void }
   const offset = (month.getDay() + 6) % 7, start = addDays(month, -offset);
   const weeks = Math.ceil((offset + new Date(y, m + 1, 0).getDate()) / 7);
   const pins = pinned(selDay);
-  const tc = S.tasks.filter((t) => t.date === selDay && !t.done && !t.time).length;
+  const tc = S.tasks.filter((t) => t.date === selDay).length;
   // Show the real items (not copies) in the day list, so ticking and editing work.
   const real = (p: Pin) => p.kind === 'event' ? S.events.find((e) => e.id === p.id) : S.tasks.find((t) => t.id === p.id);
 
@@ -86,7 +86,7 @@ export function CalendarView({ onSeeTasks }: { onSeeTasks: (k: string) => void }
           ) : <p className="text-[var(--muted)] text-[14px] py-2">{t('Nothing pinned on this day yet.')}</p>}
           <div className="flex gap-4 flex-wrap py-2.5 pt-3">
             <button onClick={() => editEvent(null, selDay)} className={cls.link}>{t('+ Add event')}</button>
-            {tc > 0 && <button onClick={() => onSeeTasks(selDay)} className={cls.link}>{tc > 1 ? t('See {n} more tasks without a time', { n: tc }) : t('See 1 more task without a time')}</button>}
+            {tc > 0 && <button onClick={() => onSeeTasks(selDay)} className={cls.link}>{t('Open this day in Tasks')}</button>}
             {selDay !== T && <button onClick={() => pick(T)} className={cls.link}>{t('Back to today')}</button>}
           </div>
         </section>

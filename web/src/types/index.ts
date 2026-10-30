@@ -86,4 +86,4 @@ export interface FileRecord {
   blob: Blob;
 }
 
-export type TabType = 'tasks' | 'calendar' | 'notes';
+export type TabType = 'tasks' | 'calendar' | 'notes' | 'helper';

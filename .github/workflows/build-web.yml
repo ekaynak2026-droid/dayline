@@ -1,0 +1,29 @@
+# Builds the web app (folder web/) and saves the finished files on the branch "<branch>-build",
+# ready to be copied to "main" for GitHub Pages. Runs on every push to a branch that changes web/.
+name: Build web app
+on:
+  push:
+    paths: ['web/**', '.github/workflows/build-web.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ !endsWith(github.ref_name, '-build') }}
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
+        env: { DAYLINE_TEST: '0', DAYLINE_BASE: /dayline }
+      - name: Save the built files on the build branch
+        run: |
+          cd out
+          git init -q -b "${GITHUB_REF_NAME}-build"
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -qm "Build of ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}-build"
