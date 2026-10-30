@@ -17,7 +17,7 @@ import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
 import { Sheet, cls } from './ui';
-import { ai, aiEnabled, downloadSize, removeAi, startAi, webgpuOk } from '@/lib/ai';
+import { ai, aiEnabled, downloadSize, pauseDownload, removeAi, startAi, webgpuOk } from '@/lib/ai';
 import { sizeText } from '@/lib/files';
 
 export function openSettings() { openSheet(<SettingsSheet key={Date.now()} />); }
@@ -76,9 +76,27 @@ function AiPanel() {
     <div className="grid gap-2">
       {intro}
       <div className="grid gap-1.5" role="status">
-        <div className="flex justify-between text-[14px] font-semibold text-[var(--ink)]"><span>{t(ai.status === 'downloading' ? 'Downloading the AI model…' : 'Starting the AI model…')}</span><span className="tabular-nums">{ai.progress}%</span></div>
+        <div className="flex justify-between gap-2 text-[14px] font-semibold text-[var(--ink)]">
+          <span>{t(ai.status === 'downloading' ? 'Downloading the AI model…' : 'Starting the AI model…')}</span>
+          <span className="tabular-nums">{ai.status === 'downloading' && ai.size ? `${sizeText(ai.done)} / ${sizeText(ai.size)}` : `${ai.progress}%`}</span>
+        </div>
         <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden"><div className="h-full bg-[var(--accent)] transition-[width]" style={{ width: `${ai.progress}%` }} /></div>
-        <p className="m-0 text-[13px] text-[var(--muted)]">{t('Keep Dayline open until it finishes. If it stops, tap Download again and it continues where it left off.')}</p>
+        {ai.note && <p className="m-0 text-[13px] font-semibold text-[var(--sun-ink)]">{t(ai.note)}</p>}
+        <p className="m-0 text-[13px] text-[var(--muted)]">{t(ai.status === 'downloading'
+          ? 'Keep Dayline open with the screen on, on Wi-Fi. It downloads in small parts: if it stops, tap Download again and it continues from the last finished part.'
+          : 'Preparing the model on this phone. This can take a minute.')}</p>
+        {ai.status === 'downloading' && <div><button type="button" onClick={pauseDownload} className={cls.ghost + ' pl-0'}>{t('Pause')}</button></div>}
+      </div>
+    </div>
+  );
+  if (ai.status === 'error' && !on) return (
+    <div className="grid gap-2">
+      {intro}
+      <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{t(ai.error)}</p>
+      {ai.size > 0 && ai.done > 0 && <p className="m-0 text-[13px] text-[var(--muted)]">{t('{done} of {size} already downloaded.', { done: sizeText(ai.done), size: sizeText(ai.size) })}</p>}
+      <div className="flex gap-2 flex-wrap">
+        <button type="button" onClick={() => startAi()} className={cls.primary}>{t('Download (continue)')}</button>
+        <button type="button" onClick={async () => { await removeAi(); toast('Download removed'); }} className={cls.ghost}>{t('Cancel and delete the download')}</button>
       </div>
     </div>
   );
@@ -95,7 +113,6 @@ function AiPanel() {
   return (
     <div className="grid gap-2">
       {intro}
-      {ai.status === 'error' && <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{t(ai.error)}</p>}
       {step === 'nogpu' || ai.status === 'unsupported'
         ? <p className={cls.info}><b className="text-[var(--ink)]">{t('This browser cannot run the AI model.')}</b> {t('It needs WebGPU: use Chrome on Android, or Safari on iPhone with iOS 26 or later.')}</p>
         : step === 'confirm'

@@ -7,11 +7,13 @@
 // The library that runs it (Transformers.js) is loaded only when the assistant is used.
 
 import { emit } from './store';
+import { clearPieces, downloadFiles } from './ai-download';
 
 const LIB = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1/dist/transformers.min.js';
 export const MODEL = 'onnx-community/gemma-4-E2B-it-ONNX';
 const TASK = 'text-generation';
 const FLAG = 'dayline-ai';
+const OPTS = { dtype: 'q4f16', device: 'webgpu' };
 
 export type AiStatus = 'off' | 'unsupported' | 'downloading' | 'loading' | 'ready' | 'error';
 export interface ChatMsg { role: 'user' | 'assistant'; content: string }
@@ -28,6 +30,10 @@ export const ai = {
   error: '',
   /** Bytes the download needs, when known. */
   size: 0,
+  /** Bytes downloaded so far. */
+  done: 0,
+  /** A short note during the download ("Connection is slow…"). */
+  note: '',
   busy: false,
 };
 
@@ -59,7 +65,7 @@ async function loadLib() {
 export async function downloadSize(): Promise<number> {
   try {
     const L = await loadLib();
-    const files: string[] = await L.ModelRegistry.get_pipeline_files(TASK, MODEL, { dtype: 'q4f16', device: 'webgpu' });
+    const files: string[] = await L.ModelRegistry.get_pipeline_files(TASK, MODEL, OPTS);
     const sizes = await Promise.all(files.map((f) => L.ModelRegistry.get_file_metadata(MODEL, f).then((m: any) => m?.size || 0).catch(() => 0)));
     const total = sizes.reduce((a: number, b: number) => a + b, 0);
     if (total) set({ size: total });
@@ -67,35 +73,65 @@ export async function downloadSize(): Promise<number> {
   } catch { return 0; }
 }
 
+/** The address the library uses for a model file (and its key in the browser cache). */
+function fileUrl(L: any, f: string) {
+  const trim = (x: string) => x.replace(/^\/+|\/+$/g, '');
+  const tpl = String(L.env.remotePathTemplate || '{model}/resolve/{revision}/').replaceAll('{model}', MODEL).replaceAll('{revision}', 'main');
+  return [String(L.env.remoteHost || 'https://huggingface.co/').replace(/\/+$/, ''), trim(tpl), trim(f)].join('/');
+}
+
+let dlCtl: AbortController | null = null;
+/** Pauses the download. The finished parts are kept; Download continues from there. */
+export function pauseDownload() { dlCtl?.abort(); }
+
 /** Downloads (first time) or opens (later) the model. Safe to call many times. */
 export function startAi(): Promise<void> {
   if (gen) { set({ status: 'ready' }); return Promise.resolve(); }
   if (loading) return loading;
   loading = (async () => {
     if (!(await webgpuOk())) { set({ status: 'unsupported' }); loading = null; return; }
-    set({ status: 'loading', progress: 0, error: '' });
+    set({ status: 'loading', progress: 0, error: '', note: '' });
+    let lock: any = null;
     try {
       const L = await loadLib();
-      const cached = await L.ModelRegistry.is_pipeline_cached(TASK, MODEL, { dtype: 'q4f16', device: 'webgpu' }).catch(() => false);
-      if (!cached) set({ status: 'downloading' });
+      const cached = await L.ModelRegistry.is_pipeline_cached(TASK, MODEL, OPTS).catch(() => false);
+      if (!cached) {
+        // Our own download in small, resumable pieces (see ai-download.ts).
+        set({ status: 'downloading' });
+        navigator.storage?.persist?.().catch(() => {});
+        try { lock = await (navigator as any).wakeLock?.request('screen'); } catch { /* not allowed: fine */ }
+        const files: string[] = await L.ModelRegistry.get_pipeline_files(TASK, MODEL, OPTS);
+        dlCtl = new AbortController();
+        await downloadFiles(files.map((f) => ({ name: f, url: fileUrl(L, f) })), ({ done, total, note }) => {
+          const p = total ? Math.min(99, Math.floor(done / total * 100)) : 0;
+          if (p !== ai.progress || note !== ai.note || Math.abs(done - ai.done) > 4e6) set({ progress: p, size: total, done, note });
+        }, dlCtl.signal);
+        dlCtl = null;
+        try { await lock?.release(); } catch { /* gone */ } lock = null;
+      }
+      // Open the model from the phone's storage and prepare it on the graphics chip.
+      set({ status: 'loading', progress: 0, note: '' });
       gen = await L.pipeline(TASK, MODEL, {
-        dtype: 'q4f16', device: 'webgpu',
+        ...OPTS,
         progress_callback: (i: any) => {
           if (i.status === 'progress_total' && typeof i.progress === 'number') {
             const p = Math.floor(i.progress);
-            if (p !== ai.progress) set({ progress: p, ...(i.total ? { size: i.total } : {}) });
+            if (p !== ai.progress) set({ progress: p });
           }
         },
       });
       setFlag(true);
       set({ status: 'ready', progress: 100 });
-      navigator.storage?.persist?.().catch(() => {});
     } catch (e) {
       gen = null;
-      const msg = String((e as Error)?.message || e);
-      set({ status: 'error', error: /quota|space|storage/i.test(msg) ? 'Not enough free space on this phone for the AI model.'
-        : !navigator.onLine ? 'The download needs the internet. Connect and try again; it continues where it stopped.'
-        : 'The AI model could not start. ' + msg.slice(0, 160) });
+      try { await lock?.release(); } catch { /* gone */ }
+      const paused = dlCtl?.signal.aborted; dlCtl = null;
+      const msg = String((e as Error)?.name || '') + ' ' + String((e as Error)?.message || e);
+      set({ status: 'error', note: '', error: paused ? 'Download paused. Tap Download to continue; the finished part is kept.'
+        : /quota/i.test(msg) ? 'Not enough free space on this phone for the AI model. Free some space, then tap Download to continue.'
+        : !navigator.onLine ? 'The download needs the internet. Connect, then tap Download to continue where it stopped.'
+        : /memory|allocation|out of/i.test(msg) ? 'This phone does not have enough memory to run the AI model.'
+        : 'The AI model could not finish. Tap Download to try again; it continues where it stopped. (' + msg.trim().slice(0, 120) + ')' });
     }
     loading = null;
   })();
@@ -107,7 +143,8 @@ export async function removeAi() {
   setFlag(false);
   try { await gen?.dispose?.(); } catch { /* already gone */ }
   gen = null;
-  try { const L = await loadLib(); await L.ModelRegistry.clear_pipeline_cache(TASK, MODEL, { dtype: 'q4f16', device: 'webgpu' }); } catch { /* nothing cached */ }
+  try { const L = await loadLib(); await L.ModelRegistry.clear_pipeline_cache(TASK, MODEL, OPTS); } catch { /* nothing cached */ }
+  await clearPieces();
   set({ status: 'off', progress: 0, error: '' });
 }
 
