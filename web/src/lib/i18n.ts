@@ -212,7 +212,7 @@ const RU: Record<string, string | string[]> = {
   'Pen': 'Ручка', 'Marker': 'Маркер', 'Eraser': 'Ластик', 'Line': 'Линия', 'Arrow': 'Стрелка', 'Rectangle': 'Прямоугольник', 'Ellipse': 'Эллипс', 'Text': 'Текст',
   'Colour {c}': 'Цвет {c}', 'Thin': 'Тонкая', 'Medium': 'Средняя', 'Thick': 'Толстая',
   'Type the text to place': 'Введите текст', 'Place': 'Вставить', 'Undo': 'Отменить', 'Redo': 'Вернуть', 'Clear page': 'Очистить лист',
-  'Plain': 'Чистый', 'Grid': 'Клетка', 'Dots': 'Точки', 'Draft name': 'Название эскиза',
+  'Paper': 'Бумага', 'Plain': 'Чистый', 'Grid': 'Клетка', 'Dots': 'Точки', 'Draft name': 'Название эскиза',
   'Save to Notes': 'Сохранить в заметки', 'Save as picture': 'Сохранить как картинку', 'Delete draft': 'Удалить эскиз', 'Delete this draft?': 'Удалить этот эскиз?', 'Keep it': 'Оставить',
   'Saved to Notes': 'Сохранено в заметки', 'Draft deleted': 'Эскиз удалён',
   'Drafts are saved on this phone as you draw. Save to Notes to keep a drawing on all your devices.': 'Эскизы сохраняются на этом телефоне по ходу рисования. Сохраните в заметки, чтобы рисунок был на всех устройствах.',

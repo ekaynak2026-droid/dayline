@@ -20,8 +20,8 @@ type Op =
   | { k: 'text'; c: string; s: number; at: Pt; text: string };
 
 const COLORS = ['#14212B', '#2F5BEA', '#C2362B', '#1E9668', '#DB5F33', '#8650D6', '#FFC93C', '#FFFFFF'];
-const SIZES = [4, 9, 18];
-const FONT = [36, 56, 88];
+const SIZES = [6, 12, 24];
+const FONT = [44, 64, 96];
 const GRID = 40; // paper squares, in page pixels
 
 /* ---------- drawing ---------- */
@@ -287,7 +287,7 @@ export function SketchPad() {
         <div className="flex items-center gap-1 overflow-x-auto">
           {COLORS.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)} aria-label={t('Colour {c}', { c })} aria-pressed={color === c}
-              className={`w-7 h-7 flex-none rounded-full border-2 cursor-pointer ${color === c ? 'border-[var(--accent)] scale-110' : 'border-[var(--line)]'}`} style={{ backgroundColor: c }} />
+              className={`w-6 h-6 flex-none rounded-full border-2 cursor-pointer ${color === c ? 'border-[var(--accent)] scale-110' : 'border-[var(--line)]'}`} style={{ backgroundColor: c }} />
           ))}
           <span className="w-px h-6 flex-none bg-[var(--line)] mx-0.5" />
           {SIZES.map((s, i) => (
@@ -323,9 +323,11 @@ export function SketchPad() {
         <button type="button" onClick={undo} disabled={!ops.current.length} className={`${btn} ${on(false)} disabled:opacity-40 font-semibold text-sm`}>{t('Undo')}</button>
         <button type="button" onClick={redoOne} disabled={!redo.current.length} className={`${btn} ${on(false)} disabled:opacity-40 font-semibold text-sm`}>{t('Redo')}</button>
         <button type="button" onClick={clearPage} className={`${btn} ${on(false)} font-semibold text-sm`}>{t('Clear page')}</button>
-        <span className="flex-1" />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[13px] font-semibold text-[var(--muted)] mr-1">{t('Paper')}</span>
         {(['plain', 'grid', 'dots'] as Paper[]).map((p) => (
-          <button key={p} type="button" onClick={() => setPaper(p)} aria-pressed={cur?.paper === p} className={cls.pill(cur?.paper === p) + ' !px-2.5 !py-1 !text-[13px]'}>{t({ plain: 'Plain', grid: 'Grid', dots: 'Dots' }[p])}</button>
+          <button key={p} type="button" onClick={() => setPaper(p)} aria-pressed={cur?.paper === p} className={cls.pill(cur?.paper === p) + ' !px-3 !py-1 !text-[13px]'}>{t({ plain: 'Plain', grid: 'Grid', dots: 'Dots' }[p])}</button>
         ))}
       </div>
 
