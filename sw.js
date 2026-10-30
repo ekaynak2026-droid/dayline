@@ -1,8 +1,8 @@
 // Service worker: keeps a copy of the app on the phone so it opens without internet.
 // The list of app files and the version below are filled in automatically after each build
 // (scripts/sw-shell.mjs), so every new version replaces the old saved copy.
-const CACHE = 'dayline-next-mvvicm8y';
-const SHELL = ['./', '_next/static/0Erg8oc8qYXU66I0xeEPg/_buildManifest.js', '_next/static/0Erg8oc8qYXU66I0xeEPg/_clientMiddlewareManifest.js', '_next/static/0Erg8oc8qYXU66I0xeEPg/_ssgManifest.js', '_next/static/chunks/0cz1d0mv5g_q7.js', '_next/static/chunks/0umf92h1sb77c.js', '_next/static/chunks/20p6iyq_-v4_1.js', '_next/static/chunks/2fhmg88kyvw3-.css', '_next/static/chunks/2wygtw8ak_ih9.js', '_next/static/chunks/3cfn99dbrcvvp.js', '_next/static/chunks/3wbm-994r45kr.js', '_next/static/chunks/turbopack-0eowb_3f-uy_3.js', '_next/static/media/favicon.117ezoe8m31dk.ico', 'favicon.ico', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon.svg', 'index.html', 'manifest.webmanifest'];
+const CACHE = 'dayline-next-mvvkxbhf';
+const SHELL = ['./', '_next/static/ZbgRQxjp7xrmjnTdrU0Y-/_buildManifest.js', '_next/static/ZbgRQxjp7xrmjnTdrU0Y-/_clientMiddlewareManifest.js', '_next/static/ZbgRQxjp7xrmjnTdrU0Y-/_ssgManifest.js', '_next/static/chunks/0cz1d0mv5g_q7.js', '_next/static/chunks/0umf92h1sb77c.js', '_next/static/chunks/2rv8r5_e34wf-.js', '_next/static/chunks/2wygtw8ak_ih9.js', '_next/static/chunks/3cfn99dbrcvvp.js', '_next/static/chunks/3hhbeo2rp8j93.css', '_next/static/chunks/3wbm-994r45kr.js', '_next/static/chunks/turbopack-0eowb_3f-uy_3.js', '_next/static/media/favicon.117ezoe8m31dk.ico', 'favicon.ico', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon.svg', 'index.html', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -16,12 +16,12 @@ self.addEventListener('activate', e => {
 });
 
 // App files: use the network when online (so updates arrive), fall back to the saved copy offline.
-// Fonts and the sync library: use the saved copy first (they never change).
+// Fonts, the sync library and the AI library: use the saved copy first (they never change).
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.host === 'fonts.googleapis.com' || url.host === 'fonts.gstatic.com' || (url.host === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/'))) {
+  if (url.host === 'fonts.googleapis.com' || url.host === 'fonts.gstatic.com' || (url.host === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) || (url.host === 'cdn.jsdelivr.net' && /^\/npm\/(@huggingface\/transformers|onnxruntime-web)@\d/.test(url.pathname))) {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
       const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res;
     })));
