@@ -160,12 +160,12 @@ export function SketchPad() {
 
   // Save straight away when leaving the tab.
   useEffect(() => () => {
-    if (saveTimer.current && ink.current && cur) {
+    const d = curRef.current, c = ink.current;
+    if (saveTimer.current && c && d) {
       clearTimeout(saveTimer.current);
-      const c = ink.current, d = cur;
       canvasBlob(c).then((b) => updateDraft(d, b)).catch(() => {});
     }
-  }, [cur]);
+  }, []);
 
   const commit = (op: Op) => {
     ops.current.push(op); redo.current = [];
