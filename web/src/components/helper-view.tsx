@@ -40,6 +40,7 @@ export function HelperView() {
       </header>
 
       <div className="px-4 grid gap-3">
+        {shown === 'assistant' ? <Assistant /> : <SketchPad />}
         {!on && !hideHint && (
           <div className="bg-[var(--surface)] border border-dashed border-[var(--line)] rounded-2xl px-3.5 py-3 text-[14px] text-[var(--muted)] grid gap-1.5">
             <span><b className="text-[var(--ink)]">{t('Want an AI assistant here?')}</b> {t('Turn it on in Settings to chat about your tasks and get advice for each one. It runs on this phone.')}</span>
@@ -49,7 +50,6 @@ export function HelperView() {
             </span>
           </div>
         )}
-        {shown === 'assistant' ? <Assistant /> : <SketchPad />}
       </div>
     </div>
   );

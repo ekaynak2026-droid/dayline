@@ -278,20 +278,20 @@ export function SketchPad() {
 
       {/* tools */}
       <div className="bg-[var(--surface)] rounded-2xl p-2.5 grid gap-2 border border-[var(--line)]">
-        <div className="flex flex-wrap gap-1.5" role="toolbar" aria-label={t('Drawing tools')}>
+        <div className="flex gap-1 overflow-x-auto" role="toolbar" aria-label={t('Drawing tools')}>
           {(Object.keys(TOOL_ICON) as Tool[]).map((k) => (
             <button key={k} type="button" onClick={() => { setTool(k); setTextAt(null); }} aria-pressed={tool === k} aria-label={t(TOOL_NAME[k])} title={t(TOOL_NAME[k])}
-              className={`${btn} w-10 ${on(tool === k)} [&>svg]:w-5 [&>svg]:h-5`}>{TOOL_ICON[k]}</button>
+              className={`${btn} w-9 min-w-9 flex-none ${on(tool === k)} [&>svg]:w-5 [&>svg]:h-5`}>{TOOL_ICON[k]}</button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1 overflow-x-auto">
           {COLORS.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)} aria-label={t('Colour {c}', { c })} aria-pressed={color === c}
-              className={`w-8 h-8 rounded-full border-2 cursor-pointer ${color === c ? 'border-[var(--accent)] scale-110' : 'border-[var(--line)]'}`} style={{ backgroundColor: c }} />
+              className={`w-7 h-7 flex-none rounded-full border-2 cursor-pointer ${color === c ? 'border-[var(--accent)] scale-110' : 'border-[var(--line)]'}`} style={{ backgroundColor: c }} />
           ))}
-          <span className="w-px h-6 bg-[var(--line)] mx-1" />
+          <span className="w-px h-6 flex-none bg-[var(--line)] mx-0.5" />
           {SIZES.map((s, i) => (
-            <button key={s} type="button" onClick={() => setSize(s)} aria-pressed={size === s} aria-label={t(['Thin', 'Medium', 'Thick'][i])} className={`${btn} w-10 ${on(size === s)}`}>
+            <button key={s} type="button" onClick={() => setSize(s)} aria-pressed={size === s} aria-label={t(['Thin', 'Medium', 'Thick'][i])} className={`${btn} !h-8 w-8 min-w-8 flex-none ${on(size === s)}`}>
               <span className="rounded-full bg-current" style={{ width: 4 + i * 5, height: 4 + i * 5 }} />
             </button>
           ))}
@@ -308,7 +308,9 @@ export function SketchPad() {
       )}
 
       {/* the page */}
-      <div className="relative w-full rounded-xl overflow-hidden shadow-[var(--shadow)] border border-[var(--line)] bg-white" style={{ aspectRatio: `${PAGE_W} / ${PAGE_H}`, ...paperBg[cur?.paper || 'plain'] }}>
+      {/* As large as fits on screen above the tab bar, keeping the page's shape. */}
+      <div className="relative mx-auto rounded-xl overflow-hidden shadow-[var(--shadow)] border border-[var(--line)] bg-white"
+        style={{ aspectRatio: `${PAGE_W} / ${PAGE_H}`, width: `min(100%, calc((100dvh - 300px) * ${PAGE_W / PAGE_H}))`, minWidth: 220, ...paperBg[cur?.paper || 'plain'] }}>
         <canvas ref={ink} width={PAGE_W} height={PAGE_H} className="absolute inset-0 w-full h-full" />
         <canvas ref={over} width={PAGE_W} height={PAGE_H} aria-label={t('Drawing page')} role="img"
           className={`absolute inset-0 w-full h-full touch-none ${tool === 'marker' ? 'opacity-35' : ''} ${tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
