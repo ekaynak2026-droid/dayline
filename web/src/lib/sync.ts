@@ -13,7 +13,7 @@
 import { app, emit, idbDel, idbGet, idbSet, onSave } from './store';
 import { blobToB64, onRemoteFetch } from './files';
 import { unb64, reopenWithKey } from './vault';
-import { FIREBASE, COLLECTION_PREFIX as P } from './config';
+import { FIREBASE, COLLECTION_PREFIX as P, OTHER_PREFIX } from './config';
 import type { FileRecord, State } from '@/types';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
@@ -161,7 +161,7 @@ function onItems(snap: any) {
     (d.data.files || []).forEach((x: any) => { last['f:' + x.id] = 1; }); // already online: never upload it again from here
   });
   if (!snap.metadata.fromCache) { lastOk = Date.now(); error = ''; }
-  if (!ready && (st().primed || !snap.metadata.fromCache)) { ready = true; st().primed = true; changed = true; setTimeout(push, 0); }
+  if (!ready && (st().primed || !snap.metadata.fromCache)) { ready = true; st().primed = true; changed = true; setTimeout(push, 0); if (readyHook) setTimeout(readyHook, 1500); }
   if (changed) { idbSet('state', S()); emit(); setTimeout(prefetch, 500); schedule(); }
   paint();
 }
@@ -192,6 +192,10 @@ function listen() {
   };
   unsub = [items().onSnapshot({ includeMetadataChanges: true }, onItems, fail), vaultDoc().onSnapshot(onVault, fail)];
 }
+let readyHook: (() => void) | null = null;
+/** Runs once each time sync has finished its first download after signing in. */
+export function onSyncReady(f: () => void) { readyHook = f; }
+
 function onUser(u: any) {
   user = u; ready = false; vaultSeen = false; unsub.forEach((f) => f()); unsub = [];
   if (u) {
@@ -217,19 +221,19 @@ const say = (e: any) => MSG[e.code] || e.message || String(e);
 /** Redraws the sync part of Settings. */
 function paint() { emit(); }
 
-/* ---------- test copy: read the main app's online data (read-only) ---------- */
-/** Everything the main Dayline app has synced online, or null when not signed in. Nothing is changed there. */
-export async function fetchMainOnline() {
-  if (!P || !user || !db) return null;
-  const main = userDoc();
-  const snap = await main.collection('items').get();
+/* ---------- read the other copy's online data (read-only) ---------- */
+/** Everything the other copy (see OTHER_PREFIX) has synced online, or null when not signed in. Nothing is changed there. */
+export async function fetchOtherOnline() {
+  if (OTHER_PREFIX === P || !user || !ready || !db) return null;
+  const main = userDoc(), O = OTHER_PREFIX;
+  const snap = await main.collection(O + 'items').get();
   const items: { kind: string; data: any }[] = [];
   snap.docs.forEach((d: any) => { const x = d.data(); if (x && !x.deleted && x.data && LISTS[x.kind]) items.push({ kind: x.kind, data: x.data }); });
-  const v = await main.collection('meta').doc('vault').get();
+  const v = await main.collection(O + 'meta').doc('vault').get();
   const vault = v.exists ? v.data().vault || null : null;
   /** Downloads one attached file from the main app's online space. */
   const getFile = async (id: string): Promise<FileRecord | null> => {
-    const ref = main.collection('files').doc(id), m = await ref.get(); if (!m.exists) return null;
+    const ref = main.collection(O + 'files').doc(id), m = await ref.get(); if (!m.exists) return null;
     const md = m.data(); let data = '';
     for (let i = 0; i < md.chunks; i++) { const c = await ref.collection('chunks').doc(String(i)).get(); if (!c.exists) return null; data += c.data().d; }
     return { name: md.name, type: md.type, size: md.size, blob: new Blob([unb64(data) as BlobPart], { type: md.type }) };

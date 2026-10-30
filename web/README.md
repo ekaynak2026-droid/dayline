@@ -12,16 +12,14 @@ npm ci
 npm run build          # static files in out/, ready for GitHub Pages
 ```
 
-Two build settings (environment variables):
+The default build is the real app for https://ekaynak2026-droid.github.io/dayline/ . Copy the
+contents of `out/` to the `main` branch of the `dayline` repository to publish it.
 
-| Setting | Test copy (default) | Main app |
-| --- | --- | --- |
-| `DAYLINE_BASE` | `/dayline/test` | `/dayline` |
-| `DAYLINE_TEST` | `1` | `0` |
+`DAYLINE_TEST=1 DAYLINE_BASE=/dayline/test npm run build` makes a separate test copy that keeps
+its own data (database `dayline-test`, online collections starting with `test_`).
+The real app brings in anything entered in a test copy automatically, once per device.
 
-The **test copy** keeps its own data (database `dayline-test`, online collections starting with
-`test_`). On first start it copies the main app's data once, read-only. Built as the **main app**
-(`DAYLINE_TEST=0 DAYLINE_BASE=/dayline npm run build`) it uses the real data directly.
+Running `npm run dev` opens it at http://localhost:3000/dayline/
 
 ## Where things are
 

@@ -7,6 +7,7 @@
 
 export const TEST = process.env.NEXT_PUBLIC_DAYLINE_TEST === '1';
 export const VERSION = '2.0.0' + (TEST ? '-test' : '');
+export const APP_NAME = 'Dayline Planner - Checklist';
 
 /** Folder the app is served from, e.g. "/dayline/test". Used for files in public/. */
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -14,10 +15,12 @@ export const asset = (p: string) => `${BASE}/${p}`;
 
 /** Name of the database on the phone. */
 export const DB_NAME = TEST ? 'dayline-test' : 'dayline';
-/** Database to copy from on first start (test mode only). */
-export const COPY_FROM_DB = TEST ? 'dayline' : null;
 /** Prefix for the online collections (users/{you}/<prefix>items …). */
 export const COLLECTION_PREFIX = TEST ? 'test_' : '';
+/** The other copy whose data is brought in: the test copy reads the main app, and the main app
+ *  reads what was entered in the test copy (it ran at /dayline/test/ before this version went live). */
+export const OTHER_DB = TEST ? 'dayline' : 'dayline-test';
+export const OTHER_PREFIX = TEST ? '' : 'test_';
 
 // Firebase (Google's online database) settings for sync. These values are not secret:
 // your data is protected by your sign-in and the security rules, not by hiding them.

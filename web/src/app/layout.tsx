@@ -5,7 +5,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const TEST = process.env.NEXT_PUBLIC_DAYLINE_TEST === '1';
 
 export const metadata: Metadata = {
-  title: TEST ? 'Dayline (test)' : 'Dayline',
+  title: TEST ? 'Dayline (test)' : 'Dayline Planner - Checklist',
   description: "Today's tasks, a monthly calendar and notes.",
   manifest: `${BASE}/manifest.webmanifest`,
   icons: { icon: `${BASE}/icons/icon-192.png`, apple: `${BASE}/icons/apple-touch-icon.png` },

@@ -10,7 +10,7 @@
 
 import { useSyncExternalStore, type ReactNode } from 'react';
 import type { State, Note } from '@/types';
-import { DB_NAME, COPY_FROM_DB } from './config';
+import { DB_NAME, OTHER_DB } from './config';
 
 export const empty = (): State => ({
   v: 1, tasks: [], events: [], notes: [], vault: null, fired: {},
@@ -127,10 +127,9 @@ function openExisting(name: string): Promise<IDBDatabase | null> {
     } catch { res(null); }
   });
 }
-/** Reads the main Dayline app's data on this device (test copy only). Nothing is changed there. */
-export async function readMainApp(): Promise<{ state: State; files: [string, unknown][] } | null> {
-  if (!COPY_FROM_DB) return null;
-  const src = await openExisting(COPY_FROM_DB);
+/** Reads the other copy's data on this device (see OTHER_DB in config.ts). Nothing is changed there. */
+export async function readOtherCopy(): Promise<{ state: State; files: [string, unknown][] } | null> {
+  const src = await openExisting(OTHER_DB);
   if (!src) return null;
   const all: [IDBValidKey, unknown][] = await new Promise((res) => {
     try {
@@ -145,9 +144,9 @@ export async function readMainApp(): Promise<{ state: State; files: [string, unk
   if (!state) return null;
   return { state, files: all.filter(([k]) => typeof k === 'string' && k.startsWith('file:')) as [string, unknown][] };
 }
-/** First start of the test copy: copies the main app's data from this device. */
-async function copyFromMainApp(): Promise<boolean> {
-  const main = await readMainApp();
+/** First start with an empty database: copies the other copy's data from this device. */
+async function copyFromOtherCopy(): Promise<boolean> {
+  const main = await readOtherCopy();
   if (!main) return false;
   for (const [k, v] of main.files) await idbSet(k, v);
   // Start with sync switched off: this copy signs in on its own and uses its own online space.
@@ -160,7 +159,7 @@ export async function loadState() {
   const saved = await idbGet<State>('state');
   let copied = false;
   if (saved) app.S = { ...empty(), ...saved };
-  else copied = await copyFromMainApp();
+  else copied = await copyFromOtherCopy();
   app.loaded = true;
   emit();
   return { copied };

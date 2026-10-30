@@ -10,7 +10,7 @@ import { ago, fmt, iso } from '@/lib/dates';
 import { canInstall, enableReminders, isIOS, notificationState, runInstall, standalone } from '@/lib/device';
 import { createAccount, resetPassword, signIn, signOut, syncStatus } from '@/lib/sync';
 import { TEST, VERSION } from '@/lib/config';
-import { importFromMain, type ImportResult } from '@/lib/import';
+import { importFromOther, type ImportResult } from '@/lib/import';
 import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
@@ -62,7 +62,7 @@ function CopyFromMain() {
   const signedIn = syncStatus().signedIn;
   const go = async () => {
     setBusy(true); setErr(''); setRes(null);
-    try { const r = await importFromMain(); setRes(r); toast('Copied from Dayline'); }
+    try { const r = await importFromOther(); setRes(r); toast('Copied from Dayline'); }
     catch { setErr('Something went wrong while copying. Check the internet connection and try again.'); }
     setBusy(false);
   };
