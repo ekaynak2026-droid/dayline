@@ -159,12 +159,15 @@ export function SketchPad() {
   }, [open]);
 
   // Save straight away when leaving the tab.
-  useEffect(() => () => {
-    const d = curRef.current, c = ink.current;
-    if (saveTimer.current && c && d) {
-      clearTimeout(saveTimer.current);
-      canvasBlob(c).then((b) => updateDraft(d, b)).catch(() => {});
-    }
+  useEffect(() => {
+    const c = ink.current; // kept here: React clears the ref before this cleanup runs
+    return () => {
+      const d = curRef.current;
+      if (saveTimer.current && c && d) {
+        clearTimeout(saveTimer.current);
+        canvasBlob(c).then((b) => updateDraft(d, b)).catch(() => {});
+      }
+    };
   }, []);
 
   const commit = (op: Op) => {
