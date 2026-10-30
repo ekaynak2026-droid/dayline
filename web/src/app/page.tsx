@@ -91,7 +91,7 @@ export default function Home() {
           {tab === 'tasks' && <TasksView key="tasks" />}
           {tab === 'calendar' && <CalendarView key="cal" onSeeTasks={(k) => { setTab('tasks'); setTimeout(() => scrollToDay(k, true), 60); }} />}
           {tab === 'notes' && <NotesView key="notes" />}
-          {tab === 'helper' && <HelperView key="helper" onOpenDay={(k) => { setTab('tasks'); setTimeout(() => scrollToDay(k, true), 60); }} />}
+          {tab === 'helper' && <HelperView key="helper" />}
         </main>
 
         {tab !== 'helper' && <button onClick={fab} aria-label={t(tab === 'tasks' ? 'Add task' : tab === 'calendar' ? 'Add event' : 'New note')}

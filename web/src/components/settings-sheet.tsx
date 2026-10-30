@@ -1,5 +1,5 @@
 'use client';
-// Settings: reminders, sync, backup and restore, locked-note PIN, installing.
+// Settings: reminders, sync, backup and restore, locked-note PIN, the optional AI assistant, installing.
 
 import React, { useState } from 'react';
 import type { State } from '@/types';
@@ -17,6 +17,8 @@ import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
 import { Sheet, cls } from './ui';
+import { ai, aiEnabled, downloadSize, removeAi, startAi, webgpuOk } from '@/lib/ai';
+import { sizeText } from '@/lib/files';
 
 export function openSettings() { openSheet(<SettingsSheet key={Date.now()} />); }
 
@@ -53,6 +55,59 @@ function SyncPanel() {
         <button type="button" onClick={() => resetPassword(email.trim()).then(() => { if (!syncStatus().error) toast('Password reset email sent'); })} className={cls.ghost}>{t('Forgot password')}</button>
       </div>
     </form>
+  );
+}
+
+/** The optional on-phone AI assistant (Gemma 4 E2B). */
+function AiPanel() {
+  useApp();
+  const [step, setStep] = useState<'idle' | 'checking' | 'confirm' | 'nogpu' | 'remove'>('idle');
+  const on = aiEnabled();
+  const check = async () => {
+    setStep('checking');
+    if (!(await webgpuOk())) { setStep('nogpu'); return; }
+    await downloadSize();
+    setStep('confirm');
+  };
+  const sizeLabel = ai.size ? sizeText(ai.size) : t('about 1.5–2 GB');
+  const intro = <p className={cls.info}>{t('Adds an assistant to the Helper tab: chat about your tasks and get smarter advice for each one. It runs on this phone (Google Gemma 4 E2B), so after the one-time download it works offline and nothing you write leaves the phone.')}</p>;
+
+  if (ai.status === 'downloading' || ai.status === 'loading') return (
+    <div className="grid gap-2">
+      {intro}
+      <div className="grid gap-1.5" role="status">
+        <div className="flex justify-between text-[14px] font-semibold text-[var(--ink)]"><span>{t(ai.status === 'downloading' ? 'Downloading the AI model…' : 'Starting the AI model…')}</span><span className="tabular-nums">{ai.progress}%</span></div>
+        <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden"><div className="h-full bg-[var(--accent)] transition-[width]" style={{ width: `${ai.progress}%` }} /></div>
+        <p className="m-0 text-[13px] text-[var(--muted)]">{t('Keep Dayline open until it finishes. If it stops, tap Download again and it continues where it left off.')}</p>
+      </div>
+    </div>
+  );
+  if (on && ai.status !== 'error') return (
+    <div className="grid gap-2">
+      <p className={cls.info}><b className="text-[var(--ink)]">{t('The AI assistant is on.')}</b> {t('Open the Helper tab and choose Assistant. It is stored on this phone and works offline.')}</p>
+      {step !== 'remove'
+        ? <div><button type="button" onClick={() => setStep('remove')} className={cls.danger + ' pl-0'}>{t('Turn off and remove the model')}</button></div>
+        : <div className="flex flex-wrap gap-2 items-center text-[14px]"><span className="text-[var(--ink)]">{t('This frees the space it uses. You can download it again later.')}</span>
+            <button type="button" onClick={async () => { await removeAi(); setStep('idle'); toast('AI assistant removed'); }} className={cls.primary + ' !bg-[var(--danger)]'}>{t('Remove')}</button>
+            <button type="button" onClick={() => setStep('idle')} className={cls.ghost}>{t('Cancel')}</button></div>}
+    </div>
+  );
+  return (
+    <div className="grid gap-2">
+      {intro}
+      {ai.status === 'error' && <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{t(ai.error)}</p>}
+      {step === 'nogpu' || ai.status === 'unsupported'
+        ? <p className={cls.info}><b className="text-[var(--ink)]">{t('This browser cannot run the AI model.')}</b> {t('It needs WebGPU: use Chrome on Android, or Safari on iPhone with iOS 26 or later.')}</p>
+        : step === 'confirm'
+          ? <div className="grid gap-2 bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">
+              <p className="m-0">{t('The download is {size}. Use Wi-Fi, and make sure the phone has that much free space. Phones with 6 GB of memory or more work best.', { size: sizeLabel })}</p>
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" onClick={() => { setStep('idle'); startAi(); }} className={cls.primary}>{t('Download ({size})', { size: sizeLabel })}</button>
+                <button type="button" onClick={() => setStep('idle')} className={cls.ghost}>{t('Not now')}</button>
+              </div>
+            </div>
+          : <div><button type="button" disabled={step === 'checking'} onClick={check} className={cls.primary}>{t(step === 'checking' ? 'Checking this phone…' : 'Set up the AI assistant')}</button></div>}
+    </div>
   );
 }
 
@@ -134,6 +189,9 @@ function SettingsSheet() {
 
         <h4 className={cls.h4}>{t('Sync between devices')}</h4>
         <SyncPanel />
+
+        <h4 className={cls.h4}>{t('AI assistant (optional)')}</h4>
+        <AiPanel />
 
         <h4 className={cls.h4}>{t('Backup')}</h4>
         <p className={cls.info}>{t(S.sync?.uid ? 'Your data is also kept in your sync account.' : 'Everything is stored only on this device.')} {t('Save a backup file now and then, for example to iCloud Drive or Google Drive.')} {S.lastBackup ? t('Last backup: {ago}.', { ago: ago(S.lastBackup) }) : t('You have not made a backup yet.')}</p>
