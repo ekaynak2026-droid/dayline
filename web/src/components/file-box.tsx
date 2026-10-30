@@ -9,6 +9,7 @@ import { ATTACH_ACCEPT, MAXFILE, filesOf, kindOf, openFile, saveFileCopy, showBl
 import { uid } from '@/lib/dates';
 import { setFiles as storeFiles } from '@/lib/files';
 import { IconSave } from './icons';
+import { t } from '@/lib/i18n';
 import { Actions, Sheet, cls } from './ui';
 
 export function useFileBox(initial: FileRef[]) {
@@ -31,7 +32,7 @@ export function FileBox({ box, label = '📂 Files and photos' }: { box: FileBox
     const added: FileRef[] = [];
     for (let f of Array.from(e.target.files || [])) {
       f = await shrinkImage(f);
-      if (f.size > MAXFILE) { toast(`${f.name} is bigger than 10 MB`); continue; }
+      if (f.size > MAXFILE) { toast(t('{name} is bigger than 10 MB', { name: f.name })); continue; }
       const id = uid();
       pending.set(id, { name: f.name, type: f.type, size: f.size, blob: f });
       added.push({ id, name: f.name, type: f.type, size: f.size });
@@ -45,26 +46,26 @@ export function FileBox({ box, label = '📂 Files and photos' }: { box: FileBox
 
   return (
     <div>
-      <label className={cls.label}>{label}</label>
+      <label className={cls.label}>{t(label)}</label>
       {/* Attached files on the left (tap to preview, ⬇ to download), the attach button on the right. */}
       <div className="flex gap-2.5 items-start mt-1.5">
         <ul className="flex-1 min-w-0 grid grid-cols-[minmax(0,1fr)] gap-1.5 m-0 p-0 list-none">
-          {files.length === 0 && <li className="text-[14px] text-[var(--muted)] py-2.5">No files yet</li>}
+          {files.length === 0 && <li className="text-[14px] text-[var(--muted)] py-2.5">{t('No files yet')}</li>}
           {files.map((f) => (
             <li key={f.id} className="flex items-center gap-1 min-w-0 border border-[var(--line)] rounded-xl bg-[var(--bg)] pl-1">
-              <button type="button" onClick={() => preview(f)} aria-label={`Preview ${f.name}`} title={`${f.name} · ${sizeText(f.size)}`}
+              <button type="button" onClick={() => preview(f)} aria-label={t('Preview {name}', { name: f.name })} title={`${f.name} · ${sizeText(f.size)}`}
                 className="flex-1 min-w-0 flex items-center gap-2 py-2 px-1.5 text-left cursor-pointer">
                 <span className="flex-none text-[11px] font-bold uppercase tracking-wide text-[var(--accent)] bg-[var(--surface)] rounded-md px-1.5 py-0.5">{kindOf(f)}</span>
                 <span className="truncate text-[14px] text-[var(--ink)]">{f.name}</span>
               </button>
-              <button type="button" onClick={() => download(f)} aria-label={`Download ${f.name}`} className="flex-none w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"><IconSave /></button>
-              <button type="button" onClick={() => remove(f)} aria-label={`Remove ${f.name}`} className="flex-none w-9 h-9 flex items-center justify-center text-[20px] text-[var(--muted)] hover:text-[var(--danger)] cursor-pointer">×</button>
+              <button type="button" onClick={() => download(f)} aria-label={t('Download {name}', { name: f.name })} className="flex-none w-9 h-9 flex items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] cursor-pointer"><IconSave /></button>
+              <button type="button" onClick={() => remove(f)} aria-label={t('Remove {name}', { name: f.name })} className="flex-none w-9 h-9 flex items-center justify-center text-[20px] text-[var(--muted)] hover:text-[var(--danger)] cursor-pointer">×</button>
             </li>
           ))}
         </ul>
         <label htmlFor={inputId} className="flex-none w-[104px] flex flex-col items-center justify-center gap-1 text-center border border-dashed border-[var(--muted)] rounded-xl p-2.5 text-[13px] font-semibold text-[var(--accent)] cursor-pointer hover:bg-[var(--bg)]">
           <span aria-hidden="true" className="text-[22px]">📂</span>
-          <span>Attach file or photo</span>
+          <span>{t('Attach file or photo')}</span>
         </label>
         <input type="file" id={inputId} accept={ATTACH_ACCEPT} multiple hidden onChange={onPick} />
       </div>
@@ -80,7 +81,7 @@ export function FolderButton({ item }: { item: WithFiles }) {
   const n = filesOf(item).length;
   return (
     <button type="button" onClick={(e) => { e.stopPropagation(); openSheet(<FilesSheet key={item.id + Date.now()} item={item} />); }}
-      aria-label={`Files and photos (${n})`}
+      aria-label={t('Files and photos ({n})', { n })}
       className={`flex-none h-8 min-w-8 px-1.5 rounded-lg flex items-center justify-center gap-0.5 cursor-pointer border ${n ? 'border-[var(--accent)] bg-[var(--bg)]' : 'border-transparent opacity-60 hover:opacity-100'}`}>
       <span aria-hidden="true" className="text-[16px] leading-none">📂</span>
       {n > 0 && <small className="text-[11px] font-bold text-[var(--accent)]">{n}</small>}

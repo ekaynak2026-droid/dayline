@@ -4,6 +4,7 @@
 import React, { useEffect } from 'react';
 import { closeSheet } from '@/lib/store';
 import { REMIND } from '@/lib/device';
+import { t } from '@/lib/i18n';
 
 export const cls = {
   h3: 'font-display font-extrabold text-[22px] tracking-[-0.01em] text-[var(--ink)] mb-3',
@@ -40,9 +41,9 @@ export function Sheet({ children, onClose = closeSheet }: { children: React.Reac
 export function Actions({ onDelete, saveLabel = 'Save', cancel = true }: { onDelete?: () => void; saveLabel?: string; cancel?: boolean }) {
   return (
     <div className="flex items-center justify-end gap-2 mt-4 flex-wrap">
-      {onDelete && <button type="button" onClick={onDelete} className={cls.danger + ' mr-auto'}>Delete</button>}
-      {cancel && <button type="button" onClick={closeSheet} className={cls.ghost}>Cancel</button>}
-      <button type="submit" className={cls.primary}>{saveLabel}</button>
+      {onDelete && <button type="button" onClick={onDelete} className={cls.danger + ' mr-auto'}>{t('Delete')}</button>}
+      {cancel && <button type="button" onClick={closeSheet} className={cls.ghost}>{t('Cancel')}</button>}
+      <button type="submit" className={cls.primary}>{t(saveLabel)}</button>
     </div>
   );
 }
@@ -50,7 +51,7 @@ export function Actions({ onDelete, saveLabel = 'Save', cancel = true }: { onDel
 export function RemindSelect({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
   return (
     <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={cls.input}>
-      {REMIND.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      {REMIND.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
     </select>
   );
 }

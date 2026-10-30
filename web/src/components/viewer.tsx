@@ -8,6 +8,7 @@ import React, { useEffect, useRef } from 'react';
 import { app, emit, useApp } from '@/lib/store';
 import { showBlob } from '@/lib/files';
 import { asset } from '@/lib/config';
+import { t } from '@/lib/i18n';
 
 const loaded: Record<string, Promise<unknown>> = {};
 const load = (src: string) => loaded[src] || (loaded[src] = new Promise((res, rej) => {
@@ -39,7 +40,7 @@ async function renderPdf(body: HTMLElement, blob: Blob, my: number) {
   const pdfjsLib = (window as any).pdfjsLib;
   pdfjsLib.GlobalWorkerOptions.workerSrc = asset('vendor/pdf.worker.min.js');
   const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
-  body.innerHTML = `<p class="vmsg">${doc.numPages} page${doc.numPages === 1 ? '' : 's'}</p>`;
+  body.innerHTML = `<p class="vmsg">${doc.numPages === 1 ? t('1 page') : t('{n} pages', { n: doc.numPages })}</p>`;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   for (let i = 1; i <= doc.numPages; i++) {
     if (my !== gen) return;
@@ -53,7 +54,7 @@ async function renderPdf(body: HTMLElement, blob: Blob, my: number) {
 async function renderWord(body: HTMLElement, blob: Blob) {
   await load('vendor/mammoth.browser.min.js');
   const r = await (window as any).mammoth.convertToHtml({ arrayBuffer: await blob.arrayBuffer() });
-  body.innerHTML = `<article class="vdoc">${clean(r.value) || '<p>This document is empty.</p>'}</article>`;
+  body.innerHTML = `<article class="vdoc">${clean(r.value) || `<p>${t('This document is empty.')}</p>`}</article>`;
 }
 async function renderSheet(body: HTMLElement, blob: Blob) {
   await load('vendor/xlsx.full.min.js');
@@ -83,7 +84,7 @@ export function Viewer() {
   useEffect(() => {
     if (!viewer || !bodyRef.current) return;
     const body = bodyRef.current, my = ++gen, { blob, name, type } = viewer, e = ext(name);
-    body.innerHTML = '<p class="vmsg">Opening…</p>';
+    body.innerHTML = `<p class="vmsg">${t('Opening…')}</p>`;
     closeRef.current?.focus();
     let url = '';
     (async () => {
@@ -93,10 +94,10 @@ export function Viewer() {
         else if (['xlsx', 'xls', 'xlsm', 'csv', 'ods'].includes(e)) await renderSheet(body, blob);
         else if (e === 'txt' || String(type).startsWith('text/')) body.innerHTML = `<pre class="vdoc vtext">${esc(await blob.text())}</pre>`;
         else if (String(type).startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(name)) { url = URL.createObjectURL(blob); body.innerHTML = `<img class="vpage" src="${url}" alt="${esc(name)}">`; }
-        else body.innerHTML = `<p class="vmsg">This kind of file (${esc(e.toUpperCase() || 'unknown')}) can't be shown inside Dayline.${e === 'doc' ? ' Older Word files (.doc) need Word; files saved as .docx open here.' : ''} Tap <b>Download</b> to open it in another app.</p>`;
+        else body.innerHTML = `<p class="vmsg">${esc(t("This kind of file ({ext}) can't be shown inside Dayline.", { ext: e.toUpperCase() || '?' }))}${e === 'doc' ? ' ' + t('Older Word files (.doc) need Word; files saved as .docx open here.') : ''} ${t('Tap Download to open it in another app.')}</p>`;
       } catch (err) {
         if (my !== gen) return;
-        body.innerHTML = `<p class="vmsg">${(err as Error).message === 'load' ? 'The viewer could not load. Connect to the internet once and try again.' : 'Dayline could not read this file. It may be damaged or password-protected.'} You can still tap <b>Download</b>.</p>`;
+        body.innerHTML = `<p class="vmsg">${t((err as Error).message === 'load' ? 'The viewer could not load. Connect to the internet once and try again.' : 'Dayline could not read this file. It may be damaged or password-protected.')} ${t('You can still tap Download.')}</p>`;
       }
     })();
     const k = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { ev.stopPropagation(); closeViewer(); } };
@@ -108,9 +109,9 @@ export function Viewer() {
   return (
     <div className="viewer" role="dialog" aria-modal="true" aria-label={viewer.name}>
       <header className="vbar">
-        <button ref={closeRef} type="button" onClick={closeViewer} aria-label="Close" className="w-[38px] h-[38px] rounded-xl flex items-center justify-center border border-[var(--line)] bg-[var(--surface)] text-[24px] leading-none flex-none cursor-pointer">×</button>
+        <button ref={closeRef} type="button" onClick={closeViewer} aria-label={t('Close')} className="w-[38px] h-[38px] rounded-xl flex items-center justify-center border border-[var(--line)] bg-[var(--surface)] text-[24px] leading-none flex-none cursor-pointer">×</button>
         <b className="vname">{viewer.name}</b>
-        <button type="button" onClick={() => showBlob(viewer.blob, viewer.name)} className="flex-none text-[var(--accent)] font-bold py-2 px-1.5 cursor-pointer">Download</button>
+        <button type="button" onClick={() => showBlob(viewer.blob, viewer.name)} className="flex-none text-[var(--accent)] font-bold py-2 px-1.5 cursor-pointer">{t('Download')}</button>
       </header>
       <div ref={bodyRef} className="vbody" />
     </div>

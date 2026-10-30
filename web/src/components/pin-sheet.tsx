@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { app, closeSheet, openSheet, toast } from '@/lib/store';
 import { changePin, createVault, openVault } from '@/lib/vault';
 import { Sheet, cls } from './ui';
+import { t } from '@/lib/i18n';
 
 const PINLEN = 6;
 type Mode = 'set' | 'unlock' | 'change';
@@ -18,8 +19,8 @@ export function ensureVault(then?: () => void) {
 
 export function PinSheet({ mode, then }: { mode: Mode; then?: () => void }) {
   const setup = mode === 'set' || mode === 'change';
-  const head0 = mode === 'change' ? 'Choose a new 6-digit PIN' : setup ? 'Choose a 6-digit PIN' : 'Enter your PIN';
-  const sub0 = setup ? 'You will type it to open locked notes. If you forget it, those notes cannot be recovered.' : 'Locked notes stay encrypted until you enter it.';
+  const head0 = t(mode === 'change' ? 'Choose a new 6-digit PIN' : setup ? 'Choose a 6-digit PIN' : 'Enter your PIN');
+  const sub0 = t(setup ? 'You will type it to open locked notes. If you forget it, those notes cannot be recovered.' : 'Locked notes stay encrypted until you enter it.');
   const [entry, setEntryState] = useState('');
   const entryRef = useRef('');
   const setEntry = (v: string) => { entryRef.current = v; setEntryState(v); };
@@ -45,18 +46,18 @@ export function PinSheet({ mode, then }: { mode: Mode; then?: () => void }) {
       first.current = next;
       entryRef.current = '';
       setTimeout(() => setEntryState(''), 150);
-      setHead('Type it once more'); setSub('Just to be sure it is right.');
+      setHead(t('Type it once more')); setSub(t('Just to be sure it is right.'));
       return;
     }
-    if (setup && next !== first.current) { first.current = null; setHead(head0); setSub(sub0); fail('Those did not match. Start again.'); return; }
-    busy.current = true; setSub(setup ? 'Securing your notes…' : 'Checking…');
+    if (setup && next !== first.current) { first.current = null; setHead(head0); setSub(sub0); fail(t('Those did not match. Start again.')); return; }
+    busy.current = true; setSub(t(setup ? 'Securing your notes…' : 'Checking…'));
     try {
       if (setup) {
         if (mode === 'change') await changePin(next); else await createVault(next);
         closeSheet(); toast(mode === 'change' ? 'PIN changed' : 'PIN set. Locked notes are ready'); then?.();
       } else if (await openVault(next)) { closeSheet(); then?.(); }
-      else { busy.current = false; setSub(sub0); fail('Wrong PIN. Try again.'); }
-    } catch { busy.current = false; setSub(sub0); fail('Locked notes need a secure (https) connection.'); }
+      else { busy.current = false; setSub(sub0); fail(t('Wrong PIN. Try again.')); }
+    } catch { busy.current = false; setSub(sub0); fail(t('Locked notes need a secure (https) connection.')); }
   };
 
   // Typing digits on a keyboard works too.
@@ -74,7 +75,7 @@ export function PinSheet({ mode, then }: { mode: Mode; then?: () => void }) {
       <div className="grid justify-items-center text-center gap-2">
         <h3 className={cls.h3 + ' mb-0'}>{head}</h3>
         <p className="m-0 text-[14px] text-[var(--muted)] max-w-[34ch]">{sub}</p>
-        <div key={shake} className={`flex gap-3 my-3 ${shake ? 'shake' : ''}`} aria-label={`${entry.length} of 6 digits`}>
+        <div key={shake} className={`flex gap-3 my-3 ${shake ? 'shake' : ''}`} aria-label={t('{n} of 6 digits', { n: entry.length })}>
           {Array.from({ length: PINLEN }).map((_, i) => (
             <i key={i} className={`w-3.5 h-3.5 rounded-full border-2 border-[var(--ink)] ${i < entry.length ? 'bg-[var(--ink)]' : ''}`} />
           ))}
@@ -82,11 +83,11 @@ export function PinSheet({ mode, then }: { mode: Mode; then?: () => void }) {
         {err && <p role="alert" className="m-0 text-[var(--danger)] font-semibold text-[14px]">{err}</p>}
         <div ref={padRef} className="grid grid-cols-3 gap-2.5 my-2">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) => k === '' ? <span key={i} /> : (
-            <button key={i} type="button" data-k={k} onClick={() => press(k)} aria-label={k === '⌫' ? 'Delete digit' : undefined}
+            <button key={i} type="button" data-k={k} onClick={() => press(k)} aria-label={k === '⌫' ? t('Delete digit') : undefined}
               className="w-[72px] h-[58px] rounded-2xl bg-[var(--bg)] text-[22px] font-semibold text-[var(--ink)] cursor-pointer active:scale-95">{k}</button>
           ))}
         </div>
-        <button type="button" onClick={closeSheet} className={cls.ghost}>Cancel</button>
+        <button type="button" onClick={closeSheet} className={cls.ghost}>{t('Cancel')}</button>
       </div>
     </Sheet>
   );

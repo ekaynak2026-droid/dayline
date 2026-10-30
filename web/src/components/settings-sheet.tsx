@@ -11,6 +11,8 @@ import { canInstall, enableReminders, isIOS, notificationState, runInstall, stan
 import { createAccount, resetPassword, signIn, signOut, syncStatus } from '@/lib/sync';
 import { TEST, VERSION } from '@/lib/config';
 import { importFromOther, type ImportResult } from '@/lib/import';
+import { getLang, setLang, t, locale, type Lang } from '@/lib/i18n';
+import { emit } from '@/lib/store';
 import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
@@ -18,10 +20,10 @@ import { Sheet, cls } from './ui';
 
 export function openSettings() { openSheet(<SettingsSheet key={Date.now()} />); }
 
-function agoText(t: number | null) {
-  if (!t) return '';
-  const sec = Math.round((Date.now() - t) / 1000);
-  return sec < 60 ? 'just now' : sec < 3600 ? Math.round(sec / 60) + ' min ago' : new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+function agoText(ts: number | null) {
+  if (!ts) return '';
+  const sec = Math.round((Date.now() - ts) / 1000);
+  return sec < 60 ? t('just now') : sec < 3600 ? t('{n} min ago', { n: Math.round(sec / 60) }) : new Date(ts).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function SyncPanel() {
@@ -29,26 +31,26 @@ function SyncPanel() {
   const s = syncStatus();
   const [email, setEmail] = useState(app.S.sync?.email || '');
   const [pass, setPass] = useState('');
-  if (!s.configured) return <p className={cls.info}>Sync is not set up for this copy of Dayline yet.</p>;
-  if (!s.booted) return <p className={cls.info}>{typeof navigator !== 'undefined' && navigator.onLine ? 'Connecting…' : 'Sync needs the internet the first time. Try again when you are online.'}</p>;
+  if (!s.configured) return <p className={cls.info}>{t('Sync is not set up for this copy of Dayline yet.')}</p>;
+  if (!s.booted) return <p className={cls.info}>{typeof navigator !== 'undefined' && navigator.onLine ? t('Connecting…') : t('Sync needs the internet the first time. Try again when you are online.')}</p>;
   if (s.signedIn) return (
     <div className="grid gap-1">
-      <p className={cls.info}><b className="text-[var(--ink)]">Syncing as {s.email}.</b> {s.error ? s.error : s.ready ? (s.lastOk ? 'Last synced ' + agoText(s.lastOk) + '.' : 'Up to date.') : 'Getting your data…'} Sign in with the same email on your other devices to share everything.</p>
-      <div><button type="button" onClick={async () => { await signOut(); toast('Signed out. Your data stays on this device.'); }} className={cls.link + ' py-2'}>Sign out on this device</button></div>
+      <p className={cls.info}><b className="text-[var(--ink)]">{t('Syncing as {email}.', { email: s.email || '' })}</b> {s.error ? s.error : s.ready ? (s.lastOk ? t('Last synced {ago}.', { ago: agoText(s.lastOk) }) : t('Up to date.')) : t('Getting your data…')} {t('Sign in with the same email on your other devices to share everything.')}</p>
+      <div><button type="button" onClick={async () => { await signOut(); toast('Signed out. Your data stays on this device.'); }} className={cls.link + ' py-2'}>{t('Sign out on this device')}</button></div>
     </div>
   );
   return (
     <form onSubmit={(e) => { e.preventDefault(); signIn(email.trim(), pass); }} className="grid gap-1.5">
-      <p className={cls.info}>Use the same email and password on your phone and computer, and everything stays the same on both.</p>
-      <label htmlFor="sy-email" className={cls.label}>Email</label>
+      <p className={cls.info}>{t('Use the same email and password on your phone and computer, and everything stays the same on both.')}</p>
+      <label htmlFor="sy-email" className={cls.label}>{t('Email')}</label>
       <input id="sy-email" type="email" autoComplete="username" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className={cls.input} />
-      <label htmlFor="sy-pass" className={cls.label}>Password</label>
+      <label htmlFor="sy-pass" className={cls.label}>{t('Password')}</label>
       <input id="sy-pass" type="password" autoComplete="current-password" minLength={6} value={pass} onChange={(e) => setPass(e.target.value)} className={cls.input} />
       {s.error && <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{s.error}</p>}
       <div className="flex gap-2 flex-wrap mt-1.5">
-        <button type="submit" className={cls.primary}>Sign in</button>
-        <button type="button" onClick={() => createAccount(email.trim(), pass).then(() => { if (syncStatus().signedIn) toast('Account created. Syncing…'); })} className={cls.ghost + ' text-[var(--accent)]'}>Create account</button>
-        <button type="button" onClick={() => resetPassword(email.trim()).then(() => { if (!syncStatus().error) toast('Password reset email sent'); })} className={cls.ghost}>Forgot password</button>
+        <button type="submit" className={cls.primary}>{t('Sign in')}</button>
+        <button type="button" onClick={() => createAccount(email.trim(), pass).then(() => { if (syncStatus().signedIn) toast('Account created. Syncing…'); })} className={cls.ghost + ' text-[var(--accent)]'}>{t('Create account')}</button>
+        <button type="button" onClick={() => resetPassword(email.trim()).then(() => { if (!syncStatus().error) toast('Password reset email sent'); })} className={cls.ghost}>{t('Forgot password')}</button>
       </div>
     </form>
   );
@@ -86,10 +88,10 @@ function CopyFromMain() {
 function SettingsSheet() {
   const { S } = useApp();
   const perm = notificationState();
-  const remindState = perm === 'granted' ? <b>Reminders are on.</b>
-    : perm === 'denied' ? <><b>Reminders are blocked.</b> Allow notifications for Dayline in your phone settings.</>
-    : isIOS() && !standalone() ? 'On iPhone, add Dayline to your Home Screen first, then turn reminders on here.'
-    : perm === 'unsupported' ? 'This browser cannot show reminders.' : 'Reminders are off.';
+  const remindState = perm === 'granted' ? <b>{t('Reminders are on.')}</b>
+    : perm === 'denied' ? <><b>{t('Reminders are blocked.')}</b> {t('Allow notifications for Dayline in your phone settings.')}</>
+    : t(isIOS() && !standalone() ? 'On iPhone, add Dayline to your Home Screen first, then turn reminders on here.'
+    : perm === 'unsupported' ? 'This browser cannot show reminders.' : 'Reminders are off.');
 
   const backup = async () => {
     app.S.lastBackup = Date.now(); await save(); toast('Preparing backup…');
@@ -99,7 +101,7 @@ function SettingsSheet() {
       if (rec) files[f.id] = { name: rec.name, type: rec.type, size: rec.size, data: await blobToB64(rec.blob) }; else missing.push(f.name);
     }
     download(`dayline-backup-${iso(new Date())}.json`, JSON.stringify({ app: 'dayline', saved: new Date().toISOString(), state: app.S, files }), 'application/json');
-    toast(missing.length ? `Backup saved, but ${missing.length} file(s) were not on this device` : 'Backup file saved');
+    toast(missing.length ? t('Backup saved, but {n} file(s) were not on this device', { n: missing.length }) : 'Backup file saved');
   };
   const pickRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
@@ -116,49 +118,55 @@ function SettingsSheet() {
 
   return (
     <Sheet>
-      <h3 className={cls.h3}>Settings</h3>
+      <h3 className={cls.h3}>{t('Settings')}</h3>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[14px] text-[var(--muted)] mr-1">{t('Language')}</span>
+        {([['en', 'English'], ['ru', 'Русский']] as [Lang, string][]).map(([l, name]) => (
+          <button key={l} type="button" onClick={() => { setLang(l); emit(); }} aria-pressed={getLang() === l} className={cls.pill(getLang() === l)}>{name}</button>
+        ))}
+      </div>
       <div className="grid gap-2">
         {TEST && <CopyFromMain />}
 
-        <h4 className={cls.h4}>Reminders</h4>
-        <p className={cls.info}>{remindState} Reminders pop up when Dayline is open or running in the background. For events you must not miss, use &quot;Also add to my phone&apos;s calendar&quot; on the event.</p>
-        {perm === 'default' && <div><button type="button" onClick={enableReminders} className={cls.primary}>Turn on reminders</button></div>}
+        <h4 className={cls.h4}>{t('Reminders')}</h4>
+        <p className={cls.info}>{remindState} {t('Reminders pop up when Dayline is open or running in the background. For events you must not miss, use "Also add to my phone\'s calendar" on the event.')}</p>
+        {perm === 'default' && <div><button type="button" onClick={enableReminders} className={cls.primary}>{t('Turn on reminders')}</button></div>}
 
-        <h4 className={cls.h4}>Sync between devices</h4>
+        <h4 className={cls.h4}>{t('Sync between devices')}</h4>
         <SyncPanel />
 
-        <h4 className={cls.h4}>Backup</h4>
-        <p className={cls.info}>{S.sync?.uid ? 'Your data is also kept in your sync account.' : 'Everything is stored only on this device.'} Save a backup file now and then, for example to iCloud Drive or Google Drive. {S.lastBackup ? `Last backup: ${ago(S.lastBackup)}.` : 'You have not made a backup yet.'}</p>
+        <h4 className={cls.h4}>{t('Backup')}</h4>
+        <p className={cls.info}>{t(S.sync?.uid ? 'Your data is also kept in your sync account.' : 'Everything is stored only on this device.')} {t('Save a backup file now and then, for example to iCloud Drive or Google Drive.')} {S.lastBackup ? t('Last backup: {ago}.', { ago: ago(S.lastBackup) }) : t('You have not made a backup yet.')}</p>
         <button type="button" onClick={backup} className={cls.choice}>
           <span className={cls.choiceIco}><IconSave className="w-5 h-5" /></span>
-          <span><b className="block text-[var(--ink)] text-[15px]">Save a backup file</b><span className="text-[13.5px] text-[var(--muted)]">Includes attached files. Locked notes stay encrypted inside it</span></span>
+          <span><b className="block text-[var(--ink)] text-[15px]">{t('Save a backup file')}</b><span className="text-[13.5px] text-[var(--muted)]">{t('Includes attached files. Locked notes stay encrypted inside it')}</span></span>
         </button>
         <label htmlFor="st-file" className={cls.choice}>
           <span className={cls.choiceIco}><IconOpen /></span>
-          <span><b className="block text-[var(--ink)] text-[15px]">Restore from a backup file</b><span className="text-[13.5px] text-[var(--muted)]">Replaces what is on this phone</span></span>
+          <span><b className="block text-[var(--ink)] text-[15px]">{t('Restore from a backup file')}</b><span className="text-[13.5px] text-[var(--muted)]">{t('Replaces what is on this phone')}</span></span>
         </label>
         <input type="file" id="st-file" accept="application/json,.json" hidden onChange={pickRestore} />
 
-        <h4 className={cls.h4}>Locked notes</h4>
+        <h4 className={cls.h4}>{t('Locked notes')}</h4>
         {S.vault ? (
           <>
             <button type="button" onClick={() => ensureVault(() => openSheet(<PinSheet key={'chg' + Date.now()} mode="change" />))} className={cls.choice}>
               <span className={cls.choiceIco}><IconLock /></span>
-              <span><b className="block text-[var(--ink)] text-[15px]">Change my PIN</b><span className="text-[13.5px] text-[var(--muted)]">You will need your current PIN first</span></span>
+              <span><b className="block text-[var(--ink)] text-[15px]">{t('Change my PIN')}</b><span className="text-[13.5px] text-[var(--muted)]">{t('You will need your current PIN first')}</span></span>
             </button>
-            <div><button type="button" onClick={() => openSheet(<ForgotPin key={Date.now()} />)} className={cls.danger + ' pl-0'}>I forgot my PIN</button></div>
+            <div><button type="button" onClick={() => openSheet(<ForgotPin key={Date.now()} />)} className={cls.danger + ' pl-0'}>{t('I forgot my PIN')}</button></div>
           </>
-        ) : <p className={cls.info}>Not set up yet. Open the Notes tab to start.</p>}
+        ) : <p className={cls.info}>{t('Not set up yet. Open the Notes tab to start.')}</p>}
 
         {!standalone() && (
           <>
-            <h4 className={cls.h4}>Install</h4>
+            <h4 className={cls.h4}>{t('Install')}</h4>
             <div className={cls.info}><InstallSteps /></div>
-            {canInstall() && <div><button type="button" onClick={runInstall} className={cls.primary}>Install Dayline</button></div>}
+            {canInstall() && <div><button type="button" onClick={runInstall} className={cls.primary}>{t('Install Dayline')}</button></div>}
           </>
         )}
         <p className="text-[12.5px] text-[var(--muted)] mt-2">Dayline {VERSION}</p>
-        <div className="flex justify-end"><button type="button" onClick={closeSheet} className={cls.primary}>Done</button></div>
+        <div className="flex justify-end"><button type="button" onClick={closeSheet} className={cls.primary}>{t('Done')}</button></div>
       </div>
     </Sheet>
   );
@@ -172,13 +180,13 @@ function RestoreSheet({ st, saved, files }: { st: State; saved?: string; files: 
   };
   return (
     <Sheet>
-      <h3 className={cls.h3}>Restore this backup?</h3>
+      <h3 className={cls.h3}>{t('Restore this backup?')}</h3>
       <div className="bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">
-        This replaces all tasks, events and notes on this phone with the backup{saved ? ` from ${fmt(new Date(saved), { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}: {st.tasks.length} tasks, {st.events.length} events, {st.notes.length + (st.vault?.count || 0)} notes.
+        {t('This replaces all tasks, events and notes on this phone with the backup{from}: {t} tasks, {e} events, {n} notes.', { from: saved ? t(' from {date}', { date: fmt(new Date(saved), { day: 'numeric', month: 'long', year: 'numeric' }) }) : '', t: st.tasks.length, e: st.events.length, n: st.notes.length + (st.vault?.count || 0) })}
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button type="button" onClick={closeSheet} className={cls.ghost}>Cancel</button>
-        <button type="button" onClick={go} className={cls.primary}>Restore</button>
+        <button type="button" onClick={closeSheet} className={cls.ghost}>{t('Cancel')}</button>
+        <button type="button" onClick={go} className={cls.primary}>{t('Restore')}</button>
       </div>
     </Sheet>
   );
@@ -188,13 +196,13 @@ function ForgotPin() {
   const go = async () => { app.S.vault = null; lockVault(); await save(); closeSheet(); toast('Locked notes deleted'); };
   return (
     <Sheet>
-      <h3 className={cls.h3}>Forgot your PIN?</h3>
+      <h3 className={cls.h3}>{t('Forgot your PIN?')}</h3>
       <div className="bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">
-        Locked notes are encrypted with your PIN, so without it they cannot be opened by anyone. If you restore an older backup, use the PIN you had then. The only other option is to delete the {app.S.vault?.count || 0} locked notes and choose a new PIN.
+        {t('Locked notes are encrypted with your PIN, so without it they cannot be opened by anyone. If you restore an older backup, use the PIN you had then. The only other option is to delete the {n} locked notes and choose a new PIN.', { n: app.S.vault?.count || 0 })}
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button type="button" onClick={closeSheet} className={cls.ghost}>Keep them</button>
-        <button type="button" onClick={go} className={cls.primary + ' !bg-[var(--danger)]'}>Delete locked notes</button>
+        <button type="button" onClick={closeSheet} className={cls.ghost}>{t('Keep them')}</button>
+        <button type="button" onClick={go} className={cls.primary + ' !bg-[var(--danger)]'}>{t('Delete locked notes')}</button>
       </div>
     </Sheet>
   );

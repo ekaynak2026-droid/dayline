@@ -3,6 +3,7 @@
 import React from 'react';
 import { TabType } from '../types';
 import { IconTasksTab, IconCalendarTab, IconNotesTab } from './icons';
+import { t } from '@/lib/i18n';
 
 interface NavigationProps {
   currentTab: TabType;
@@ -31,7 +32,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange 
             }`}
           >
             <Icon className="w-6 h-6 mb-0.5" />
-            <span>{tab.label}</span>
+            <span>{t(tab.label)}</span>
           </button>
         );
       })}

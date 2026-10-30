@@ -11,6 +11,7 @@
 import { useSyncExternalStore, type ReactNode } from 'react';
 import type { State, Note } from '@/types';
 import { DB_NAME, OTHER_DB } from './config';
+import { t } from './i18n';
 
 export const empty = (): State => ({
   v: 1, tasks: [], events: [], notes: [], vault: null, fired: {},
@@ -48,7 +49,7 @@ export function useApp() {
 /* ---------- small messages at the bottom of the screen ---------- */
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export function toast(msg: string) {
-  app.toast = msg; emit();
+  app.toast = t(msg); emit();
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { app.toast = ''; emit(); }, 2200);
 }

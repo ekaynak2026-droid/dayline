@@ -15,6 +15,7 @@ import { blobToB64, onRemoteFetch } from './files';
 import { unb64, reopenWithKey } from './vault';
 import { FIREBASE, COLLECTION_PREFIX as P, OTHER_PREFIX } from './config';
 import type { FileRecord, State } from '@/types';
+import { t } from './i18n';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 let retry: any = null, auth: any = null, db: any = null, user: any = null, ready = false, vaultSeen = false,
@@ -94,7 +95,7 @@ async function push() {
     const rec = await idbGet<FileRecord>('file:' + id); if (!rec) continue;
     last['f:' + id] = 1; ops.push(null);
     uploadFile(id, rec).then(() => { lastOk = Date.now(); paint(); })
-      .catch((e) => { delete last['f:' + id]; error = 'Could not upload ' + rec.name + ': ' + (e.message || e); paint(); });
+      .catch((e) => { delete last['f:' + id]; error = t('Could not upload {name}: {msg}', { name: rec.name, msg: e.message || e }); paint(); });
   }
   for (const k of Object.keys(last)) if (k.startsWith('f:') && !want.has(k.slice(2))) {
     const id = k.slice(2); delete last[k]; ops.push(null); idbDel('file:' + id); deleteRemoteFile(id).catch(() => {});
@@ -105,7 +106,7 @@ async function push() {
     const part = ops.slice(i, i + 400).filter(Boolean); if (!part.length) continue;
     const b = db.batch(); part.forEach(([ref, data]: any) => b.set(ref, data));
     b.commit().then(() => { lastOk = Date.now(); error = ''; paint(); })
-      .catch((e: any) => { error = e.code === 'permission-denied' ? 'The online database refused the change. Check the security rules from the setup guide.' : 'Could not upload: ' + (e.message || e); paint(); });
+      .catch((e: any) => { error = e.code === 'permission-denied' ? t('The online database refused the change. Check the security rules from the setup guide.') : t('Could not upload: {msg}', { msg: e.message || e }); paint(); });
   }
 }
 
@@ -184,8 +185,8 @@ function listen() {
   unsub.forEach((u) => u());
   const fail = (e: any) => {
     error = e.code === 'permission-denied'
-      ? 'You are signed in, but the online database refused access. Publish the security rule from step 4 of the setup guide; Dayline tries again every 30 seconds.'
-      : 'Sync paused: ' + (e.message || e) + '. Trying again shortly.';
+      ? t('You are signed in, but the online database refused access. Publish the security rule from step 4 of the setup guide; Dayline tries again every 30 seconds.')
+      : t('Sync paused: {msg}. Trying again shortly.', { msg: e.message || e });
     paint();
     clearTimeout(retry); const u = user;
     retry = setTimeout(() => { if (user && user === u) { error = ''; listen(); paint(); } }, 30000);
@@ -216,7 +217,7 @@ const MSG: Record<string, string> = {
   'auth/too-many-requests': 'Too many tries. Wait a few minutes and try again.',
   'auth/operation-not-allowed': 'Email sign-in is not switched on yet (step 3 of the setup guide).',
 };
-const say = (e: any) => MSG[e.code] || e.message || String(e);
+const say = (e: any) => t(MSG[e.code] || e.message || String(e));
 
 /** Redraws the sync part of Settings. */
 function paint() { emit(); }

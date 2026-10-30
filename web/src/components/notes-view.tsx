@@ -8,6 +8,7 @@ import { filesOf, notePhoto } from '@/lib/files';
 import { lockVault, sealVault } from '@/lib/vault';
 import { ago, uid } from '@/lib/dates';
 import { getNoteFilter, setNoteFilter } from '@/lib/ui-state';
+import { t } from '@/lib/i18n';
 import { FileBox, useFileBox } from './file-box';
 import { ensureVault } from './pin-sheet';
 import { IconCamera, IconClip, IconList, IconLock, IconText } from './icons';
@@ -23,7 +24,7 @@ function NoteCard({ n }: { n: Note }) {
       className="bg-[var(--surface)] rounded-2xl p-3 flex flex-col gap-1.5 border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--muted)] text-left min-w-0">
       {/* eslint-disable-next-line @next/next/no-img-element -- the photo is stored inside the note */}
       {n.photo && <img src={n.photo} alt="" className="w-[calc(100%+24px)] max-w-none -mx-3 -mt-3 mb-0.5 aspect-[4/3] object-cover" />}
-      <strong className="font-display font-semibold text-[16px] leading-tight text-[var(--ink)] break-words">{n.title || 'Untitled'}</strong>
+      <strong className="font-display font-semibold text-[16px] leading-tight text-[var(--ink)] break-words">{n.title || t('Untitled')}</strong>
       {n.type === 'list' ? (
         <>
           <ul className="list-none m-0 p-0 text-[13.5px] grid gap-1">
@@ -34,10 +35,10 @@ function NoteCard({ n }: { n: Note }) {
               </li>
             ))}
           </ul>
-          <span className="text-[12px] text-[var(--muted)]">{left} of {n.items.length} left</span>
+          <span className="text-[12px] text-[var(--muted)]">{t('{left} of {n} left', { left, n: n.items.length })}</span>
         </>
       ) : n.body ? <p className="m-0 text-[13.5px] text-[var(--muted)] line-clamp-5 whitespace-pre-line break-words">{n.body}</p> : null}
-      {fl.length > 0 && <span className="flex items-center gap-1 text-[12px] text-[var(--muted)] min-w-0"><IconClip /><span className="truncate">{fl.length === 1 ? fl[0].name : fl.length + ' files'}</span></span>}
+      {fl.length > 0 && <span className="flex items-center gap-1 text-[12px] text-[var(--muted)] min-w-0"><IconClip /><span className="truncate">{fl.length === 1 ? fl[0].name : t('{n} files', { n: fl.length })}</span></span>}
       <span className="flex items-center gap-1 text-[12px] text-[var(--muted)]">{n.locked && <IconLock className="w-3.5 h-3.5" />}{ago(n.updated)}</span>
     </button>
   );
@@ -50,21 +51,21 @@ export function NotesView() {
   const open = [...S.notes].sort((a, b) => b.updated - a.updated);
   const locked = [...vaultNotes].sort((a, b) => b.updated - a.updated);
   const shown = open.filter((n) => filter === 'all' || (filter === 'lists' && n.type === 'list') || (filter === 'photos' && n.photo) || (filter === 'files' && filesOf(n).length));
-  const emptyText = filter === 'photos' ? 'No photo notes yet. Tap + and choose "Photo note".'
+  const emptyText = t(filter === 'photos' ? 'No photo notes yet. Tap + and choose "Photo note".'
     : filter === 'files' ? 'No files yet. Open a note or checklist and attach a file.'
     : filter === 'lists' ? 'No checklists yet. Tap + and choose "Checklist".'
-    : 'No notes yet. Tap + to write one, like a shopping list.';
+    : 'No notes yet. Tap + to write one, like a shopping list.');
   const count = S.vault?.count || 0;
 
   return (
     <div className="pb-28">
       <header className="sticky top-0 z-10 bg-[var(--bg)] px-4 pt-[max(16px,env(safe-area-inset-top,0px))] pb-2.5">
-        <h1 className="font-display font-extrabold text-[30px] tracking-[-0.02em] leading-none text-[var(--ink)]">Notes</h1>
+        <h1 className="font-display font-extrabold text-[30px] tracking-[-0.02em] leading-none text-[var(--ink)]">{t('Notes')}</h1>
       </header>
       <div className="px-4">
         <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
           {([['all', 'All'], ['lists', 'Checklists'], ['photos', 'With photos'], ['files', 'With files']] as [Filter, string][]).map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)} className={cls.pill(filter === k)}>{l}</button>
+            <button key={k} onClick={() => setFilter(k)} className={cls.pill(filter === k)}>{t(l)}</button>
           ))}
         </div>
         {shown.length ? (
@@ -72,22 +73,22 @@ export function NotesView() {
         ) : <p className="text-center text-[var(--muted)] py-8 text-sm">{emptyText}</p>}
 
         <div className="flex items-center justify-between mt-6 mb-2">
-          <h2 className="flex items-center gap-2 font-display font-semibold text-lg text-[var(--ink)]"><IconLock className="w-5 h-5" /> Locked notes</h2>
-          {vaultKey && <button onClick={() => { lockVault(); emit(); toast('Locked'); }} className={cls.pill(false)}>Lock now</button>}
+          <h2 className="flex items-center gap-2 font-display font-semibold text-lg text-[var(--ink)]"><IconLock className="w-5 h-5" /> {t('Locked notes')}</h2>
+          {vaultKey && <button onClick={() => { lockVault(); emit(); toast('Locked'); }} className={cls.pill(false)}>{t('Lock now')}</button>}
         </div>
         {vaultKey ? (
           locked.length ? <div className="grid grid-cols-2 gap-2.5 items-start">{locked.map((n) => <NoteCard key={n.id} n={n} />)}</div>
-            : <p className="text-center text-[var(--muted)] py-6 text-sm">No locked notes yet. Tap + and choose &quot;Locked note&quot;.</p>
+            : <p className="text-center text-[var(--muted)] py-6 text-sm">{t('No locked notes yet. Tap + and choose "Locked note".')}</p>
         ) : (
           <button onClick={() => ensureVault(emit)} className={cls.choice + ' bg-[var(--surface)]'}>
             <span className={cls.choiceIco + ' bg-[var(--bg)]'}><IconLock /></span>
             <span>
-              <b className="block text-[var(--ink)] text-[15px]">{S.vault ? `${count} locked note${count === 1 ? '' : 's'}` : 'Set up locked notes'}</b>
-              <span className="text-[13.5px] text-[var(--muted)]">{S.vault ? 'Tap and enter your PIN to open' : 'For passwords, codes and other private things. Choose a 6-digit PIN.'}</span>
+              <b className="block text-[var(--ink)] text-[15px]">{S.vault ? (count === 1 ? t('1 locked note') : t('{n} locked notes', { n: count })) : t('Set up locked notes')}</b>
+              <span className="text-[13.5px] text-[var(--muted)]">{t(S.vault ? 'Tap and enter your PIN to open' : 'For passwords, codes and other private things. Choose a 6-digit PIN.')}</span>
             </span>
           </button>
         )}
-        <p className="text-[12.5px] text-[var(--muted)] mt-3">Locked notes are encrypted on this phone with your PIN. Nobody, including me, can open them without it, so keep your PIN somewhere safe. They lock again a minute after you leave the app.</p>
+        <p className="text-[12.5px] text-[var(--muted)] mt-3">{t('Locked notes are encrypted on this phone with your PIN. Nobody, including me, can open them without it, so keep your PIN somewhere safe. They lock again a minute after you leave the app.')}</p>
       </div>
     </div>
   );
@@ -112,16 +113,16 @@ function NoteChooser() {
   ];
   return (
     <Sheet>
-      <h3 className={cls.h3}>New note</h3>
+      <h3 className={cls.h3}>{t('New note')}</h3>
       <div className="grid gap-2.5">
-        {opts.map(([k, ico, t, s]) => (
+        {opts.map(([k, ico, title, s]) => (
           <button key={k} type="button" onClick={() => make(k)} className={cls.choice}>
             <span className={cls.choiceIco}>{ico}</span>
-            <span><b className="block text-[var(--ink)] text-[15px]">{t}</b><span className="text-[13.5px] text-[var(--muted)]">{s}</span></span>
+            <span><b className="block text-[var(--ink)] text-[15px]">{t(title)}</b><span className="text-[13.5px] text-[var(--muted)]">{t(s)}</span></span>
           </button>
         ))}
       </div>
-      <div className="flex justify-end mt-4"><button type="button" onClick={closeSheet} className={cls.ghost}>Cancel</button></div>
+      <div className="flex justify-end mt-4"><button type="button" onClick={closeSheet} className={cls.ghost}>{t('Cancel')}</button></div>
     </Sheet>
   );
 }
@@ -156,7 +157,7 @@ function NoteSheet({ note, isNew, pickPhoto }: { note: Note; isNew: boolean; pic
   const photoInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const isList = note.type === 'list';
-  const heading = isNew ? (isList ? 'New checklist' : pickPhoto ? 'New photo note' : note.locked ? 'New locked note' : 'New note') : 'Edit note';
+  const heading = t(isNew ? (isList ? 'New checklist' : pickPhoto ? 'New photo note' : note.locked ? 'New locked note' : 'New note') : 'Edit note');
 
   // A new photo note opens the camera / photo picker straight away.
   useEffect(() => { if (pickPhoto) { const t = setTimeout(() => photoInput.current?.click(), 50); return () => clearTimeout(t); } }, [pickPhoto]);
@@ -200,40 +201,40 @@ function NoteSheet({ note, isNew, pickPhoto }: { note: Note; isNew: boolean; pic
     <Sheet>
       <h3 className={cls.h3}>{heading}</h3>
       <form onSubmit={submit} className="grid gap-1.5">
-        <label htmlFor="fn-title" className={cls.label}>Title</label>
+        <label htmlFor="fn-title" className={cls.label}>{t('Title')}</label>
         <input id="fn-title" autoFocus={isNew && !pickPhoto} value={title} onChange={(e) => setTitle(e.target.value)} autoComplete="off" className={cls.input}
-          placeholder={isList ? 'e.g. Shopping list' : note.locked ? 'e.g. Bank app login' : 'e.g. Where I parked'} />
+          placeholder={t(isList ? 'e.g. Shopping list' : note.locked ? 'e.g. Bank app login' : 'e.g. Where I parked')} />
         {isList ? (
           <>
-            <span className={cls.label}>Items</span>
+            <span className={cls.label}>{t('Items')}</span>
             <ul ref={listRef} className="list-none m-0 p-0 grid gap-1.5">
               {items.map((it, i) => (
                 <li key={it.k} className="flex items-center gap-2">
-                  <input type="checkbox" checked={it.done} onChange={(e) => setItem(i, { done: e.target.checked })} aria-label="Done" className="w-5 h-5 flex-none accent-[var(--accent)]" />
-                  <input data-k={it.k} value={it.t} onChange={(e) => setItem(i, { t: e.target.value })} placeholder="Item" aria-label="Item" enterKeyHint="next"
+                  <input type="checkbox" checked={it.done} onChange={(e) => setItem(i, { done: e.target.checked })} aria-label={t('Done')} className="w-5 h-5 flex-none accent-[var(--accent)]" />
+                  <input data-k={it.k} value={it.t} onChange={(e) => setItem(i, { t: e.target.value })} placeholder={t('Item')} aria-label={t('Item')} enterKeyHint="next"
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(i); } }} className={cls.input + ' p-2.5'} />
-                  <button type="button" onClick={() => setItems((cur) => cur.filter((x) => x.k !== it.k))} aria-label="Remove item" className="flex-none w-9 h-9 text-[20px] text-[var(--muted)] cursor-pointer">×</button>
+                  <button type="button" onClick={() => setItems((cur) => cur.filter((x) => x.k !== it.k))} aria-label={t('Remove item')} className="flex-none w-9 h-9 text-[20px] text-[var(--muted)] cursor-pointer">×</button>
                 </li>
               ))}
             </ul>
-            <div><button type="button" onClick={() => addItem()} className={cls.link + ' py-2'}>+ Add item</button></div>
+            <div><button type="button" onClick={() => addItem()} className={cls.link + ' py-2'}>{t('+ Add item')}</button></div>
           </>
         ) : (
           <>
-            <label htmlFor="fn-body" className={cls.label}>Note</label>
-            <textarea id="fn-body" rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write anything…" className={cls.input + ' resize-y'} />
+            <label htmlFor="fn-body" className={cls.label}>{t('Note')}</label>
+            <textarea id="fn-body" rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('Write anything…')} className={cls.input + ' resize-y'} />
           </>
         )}
 
         <div className="grid gap-2 mt-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- the photo is stored inside the note */}
-          {photo && <img src={photo} alt="Attached photo" className="w-full max-h-[260px] object-cover rounded-xl" />}
+          {photo && <img src={photo} alt={t('Attached photo')} className="w-full max-h-[260px] object-cover rounded-xl" />}
           <div className="flex items-center gap-3 flex-wrap">
             <label htmlFor="fn-file" className="inline-flex items-center gap-2 border border-[var(--line)] rounded-xl py-2.5 px-3.5 font-semibold text-[var(--accent)] cursor-pointer bg-[var(--bg)]">
-              <IconCamera /> <span>{photo ? 'Change photo' : 'Attach a photo'}</span>
+              <IconCamera /> <span>{t(photo ? 'Change photo' : 'Attach a photo')}</span>
             </label>
             <input ref={photoInput} type="file" id="fn-file" accept="image/*" hidden onChange={onPhoto} />
-            {photo && <button type="button" onClick={() => setPhoto(null)} className={cls.ghost}>Remove photo</button>}
+            {photo && <button type="button" onClick={() => setPhoto(null)} className={cls.ghost}>{t('Remove photo')}</button>}
           </div>
         </div>
 
@@ -241,7 +242,7 @@ function NoteSheet({ note, isNew, pickPhoto }: { note: Note; isNew: boolean; pic
 
         <label className="flex items-center gap-2.5 mt-3 text-[14.5px] text-[var(--ink)] cursor-pointer">
           <input type="checkbox" checked={locked} onChange={(e) => onLock(e.target.checked)} className="w-5 h-5 accent-[var(--accent)]" />
-          Keep in locked notes (encrypted, needs your PIN)
+          {t('Keep in locked notes (encrypted, needs your PIN)')}
         </label>
         <Actions onDelete={isNew ? undefined : del} />
       </form>

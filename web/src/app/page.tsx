@@ -11,6 +11,7 @@ import { importFromOther } from '@/lib/import';
 import { TEST } from '@/lib/config';
 import { todayIso } from '@/lib/dates';
 import { asset } from '@/lib/config';
+import { getLang, t } from '@/lib/i18n';
 import { Navigation } from '@/components/navigation';
 import { TasksView, scrollToDay } from '@/components/tasks-view';
 import { CalendarView } from '@/components/calendar-view';
@@ -48,6 +49,7 @@ function startOnce() {
     startSync();
   });
   watchInstall();
+  document.documentElement.lang = getLang();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register(asset('sw.js'), { scope: asset('') }).catch(() => {});
   // Locked notes lock again a minute after leaving the app. A new day starts fresh.
   let lockTimer: ReturnType<typeof setTimeout> | undefined;
@@ -90,7 +92,7 @@ export default function Home() {
           {tab === 'notes' && <NotesView key="notes" />}
         </main>
 
-        <button onClick={fab} aria-label={tab === 'tasks' ? 'Add task' : tab === 'calendar' ? 'Add event' : 'New note'}
+        <button onClick={fab} aria-label={t(tab === 'tasks' ? 'Add task' : tab === 'calendar' ? 'Add event' : 'New note')}
           className="fixed right-[max(18px,env(safe-area-inset-right,0px))] md:right-[calc(50%-222px)] bottom-[calc(78px+env(safe-area-inset-bottom,0px))] z-20 w-[58px] h-[58px] rounded-[20px] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow)] flex items-center justify-center hover:opacity-95 active:scale-95 cursor-pointer">
           <IconPlus className="w-[26px] h-[26px]" />
         </button>

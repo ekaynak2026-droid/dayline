@@ -10,6 +10,7 @@ import { todayIso, uid } from '@/lib/dates';
 import { FileBox, FileChips, FolderButton, useFileBox } from './file-box';
 import { IconBell, IconCheck } from './icons';
 import { Actions, RemindSelect, Sheet, cls } from './ui';
+import { t as tr } from '@/lib/i18n';
 
 export const colorVar = (c: number) => `var(--c${[1, 2, 3, 4].includes(c) ? c : 1})`;
 
@@ -18,7 +19,7 @@ export function toggleTask(t: Task) { t.done = !t.done; save(); }
 export function TaskRow({ t }: { t: Task }) {
   return (
     <li className="flex flex-wrap items-center gap-x-3 min-h-[44px] border-b border-[var(--line)] last:border-b-0 min-w-0">
-      <button type="button" onClick={() => toggleTask(t)} aria-label={t.done ? 'Mark as not done' : 'Mark as done'}
+      <button type="button" onClick={() => toggleTask(t)} aria-label={t.done ? tr('Mark as not done') : tr('Mark as done')}
         className={`w-6 h-6 rounded-lg flex items-center justify-center flex-none border-2 transition-colors cursor-pointer ${t.done ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-ink)]' : 'border-[var(--muted)] hover:border-[var(--accent)]'}`}>
         {t.done && <IconCheck className="w-3.5 h-3.5" />}
       </button>
@@ -42,7 +43,7 @@ export function EventRow({ e }: { e: CalendarEvent }) {
         {e.title}
       </button>
       {hasRemind(e) && <IconBell className="w-3.5 h-3.5 text-[var(--muted)] flex-none" />}
-      <span className="text-[13px] text-[var(--muted)] flex-none tabular-nums">{e.time || 'All day'}</span>
+      <span className="text-[13px] text-[var(--muted)] flex-none tabular-nums">{e.time || tr('All day')}</span>
       <FolderButton item={e} />
       <FileChips item={e} />
     </li>
@@ -77,15 +78,15 @@ function TaskSheet({ task, date }: { task: Task | null; date?: string }) {
 
   return (
     <Sheet>
-      <h3 className={cls.h3}>{isNew ? 'New task' : 'Edit task'}</h3>
+      <h3 className={cls.h3}>{isNew ? tr('New task') : tr('Edit task')}</h3>
       <form onSubmit={submit} className="grid gap-1.5">
-        <label htmlFor="ft-text" className={cls.label}>Task</label>
-        <input id="ft-text" autoFocus={isNew} value={text} onChange={(e) => setText(e.target.value)} placeholder="What do you need to do?" autoComplete="off" className={cls.input} />
+        <label htmlFor="ft-text" className={cls.label}>{tr('Task')}</label>
+        <input id="ft-text" autoFocus={isNew} value={text} onChange={(e) => setText(e.target.value)} placeholder={tr('What do you need to do?')} autoComplete="off" className={cls.input} />
         <div className="grid grid-cols-2 gap-2.5">
-          <div className="min-w-0"><label htmlFor="ft-date" className={cls.label}>Day</label><input id="ft-date" type="date" value={day} onChange={(e) => setDay(e.target.value)} className={cls.input} /></div>
-          <div className="min-w-0"><label htmlFor="ft-time" className={cls.label}>Time (optional)</label><input id="ft-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cls.input} /></div>
+          <div className="min-w-0"><label htmlFor="ft-date" className={cls.label}>{tr('Day')}</label><input id="ft-date" type="date" value={day} onChange={(e) => setDay(e.target.value)} className={cls.input} /></div>
+          <div className="min-w-0"><label htmlFor="ft-time" className={cls.label}>{tr('Time (optional)')}</label><input id="ft-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cls.input} /></div>
         </div>
-        <label htmlFor="ft-remind" className={cls.label}>Reminder</label>
+        <label htmlFor="ft-remind" className={cls.label}>{tr('Reminder')}</label>
         <RemindSelect id="ft-remind" value={remind} onChange={setRemind} />
         <FileBox box={box} />
         <Actions onDelete={isNew ? undefined : del} />
@@ -134,25 +135,25 @@ function EventSheet({ event, date }: { event: CalendarEvent | null; date?: strin
 
   return (
     <Sheet>
-      <h3 className={cls.h3}>{isNew ? 'New event' : 'Edit event'}</h3>
+      <h3 className={cls.h3}>{isNew ? tr('New event') : tr('Edit event')}</h3>
       <form onSubmit={submit} className="grid gap-1.5">
-        <label htmlFor="fe-title" className={cls.label}>Event</label>
-        <input id="fe-title" autoFocus={isNew} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Dentist, Birthday, Flight" autoComplete="off" className={cls.input} />
+        <label htmlFor="fe-title" className={cls.label}>{tr('Event')}</label>
+        <input id="fe-title" autoFocus={isNew} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tr('e.g. Dentist, Birthday, Flight')} autoComplete="off" className={cls.input} />
         <div className="grid grid-cols-2 gap-2.5">
-          <div className="min-w-0"><label htmlFor="fe-date" className={cls.label}>Date</label><input id="fe-date" type="date" value={day} onChange={(e) => setDay(e.target.value)} className={cls.input} /></div>
-          <div className="min-w-0"><label htmlFor="fe-time" className={cls.label}>Time (empty = all day)</label><input id="fe-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cls.input} /></div>
+          <div className="min-w-0"><label htmlFor="fe-date" className={cls.label}>{tr('Date')}</label><input id="fe-date" type="date" value={day} onChange={(e) => setDay(e.target.value)} className={cls.input} /></div>
+          <div className="min-w-0"><label htmlFor="fe-time" className={cls.label}>{tr('Time (empty = all day)')}</label><input id="fe-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cls.input} /></div>
         </div>
-        <label htmlFor="fe-remind" className={cls.label}>Reminder</label>
+        <label htmlFor="fe-remind" className={cls.label}>{tr('Reminder')}</label>
         <RemindSelect id="fe-remind" value={remind} onChange={setRemind} />
-        <span className={cls.label}>Colour</span>
+        <span className={cls.label}>{tr('Colour')}</span>
         <div className="flex gap-3">
           {[1, 2, 3, 4].map((c) => (
-            <button key={c} type="button" onClick={() => setColor(c)} aria-label={`Colour ${c}`} aria-pressed={color === c}
+            <button key={c} type="button" onClick={() => setColor(c)} aria-label={tr('Colour {n}', { n: c })} aria-pressed={color === c}
               className={`w-9 h-9 rounded-full cursor-pointer border-[3px] ${color === c ? 'border-[var(--ink)]' : 'border-transparent'}`} style={{ backgroundColor: colorVar(c) }} />
           ))}
         </div>
         <FileBox box={box} />
-        <div><button type="button" onClick={ics} className={cls.link + ' py-2'}>Also add to my phone&apos;s calendar</button></div>
+        <div><button type="button" onClick={ics} className={cls.link + ' py-2'}>{tr("Also add to my phone's calendar")}</button></div>
         <Actions onDelete={isNew ? undefined : del} />
       </form>
     </Sheet>

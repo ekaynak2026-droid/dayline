@@ -4,8 +4,10 @@
 import { app, emit, save, toast } from './store';
 import { addDays, fmt, fromIso, iso, todayIso } from './dates';
 import { asset } from './config';
+import { t } from './i18n';
 
 /* ---------- reminders ---------- */
+/** Reminder choices; the labels go through t() where they are shown. */
 export const REMIND: [string, string][] = [['', 'No reminder'], ['0', 'At the time'], ['10', '10 minutes before'], ['60', '1 hour before'], ['1440', '1 day before']];
 type Remindable = { date: string; time: string; remind: string; rset?: number; id: string };
 export const hasRemind = (x: { remind?: string }) => x.remind !== '' && x.remind != null;
@@ -18,11 +20,11 @@ function dueAt(x: Remindable) {
 export function whenText(x: { date: string; time: string }) {
   const T = todayIso();
   const d = fromIso(x.date);
-  const day = x.date === T ? 'Today' : x.date === iso(addDays(fromIso(T), 1)) ? 'Tomorrow' : fmt(d, { weekday: 'long', day: 'numeric', month: 'long' });
-  return x.time ? `${day} at ${x.time}` : day;
+  const day = x.date === T ? t('Today') : x.date === iso(addDays(fromIso(T), 1)) ? t('Tomorrow') : fmt(d, { weekday: 'long', day: 'numeric', month: 'long' });
+  return x.time ? t('{day} at {time}', { day, time: x.time }) : day;
 }
 async function notify(title: string, body: string) {
-  toast('Reminder: ' + title);
+  toast(t('Reminder: {title}', { title }));
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
     const reg = await navigator.serviceWorker?.getRegistration();

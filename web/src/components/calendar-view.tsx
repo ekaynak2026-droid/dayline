@@ -4,7 +4,8 @@
 import React, { useEffect, useState } from 'react';
 import type { CalendarEvent, Task } from '@/types';
 import { app, useApp } from '@/lib/store';
-import { addDays, byTime, fmt, fromIso, iso, todayIso } from '@/lib/dates';
+import { addDays, byTime, cap, fmt, fromIso, iso, todayIso } from '@/lib/dates';
+import { t, weekdays } from '@/lib/i18n';
 import { EventRow, TaskRow, colorVar, editEvent, onEventSaved } from './rows';
 import { IconLeft, IconRight } from './icons';
 import { cls } from './ui';
@@ -42,24 +43,24 @@ export function CalendarView({ onSeeTasks }: { onSeeTasks: (k: string) => void }
     <div className="pb-28">
       <header className="sticky top-0 z-10 bg-[var(--bg)] flex items-center justify-between gap-3 px-4 pt-[max(16px,env(safe-area-inset-top,0px))] pb-2.5">
         <h1 className="font-display font-extrabold text-[30px] tracking-[-0.02em] leading-none text-[var(--ink)]">
-          {fmt(month, { month: 'long' })} <span className="text-[var(--muted)] font-semibold">{y}</span>
+          {cap(fmt(month, { month: 'long' }))} <span className="text-[var(--muted)] font-semibold">{y}</span>
         </h1>
         <div className="flex items-center gap-1">
-          <button onClick={() => setMonth(new Date(y, m - 1, 1))} aria-label="Previous month" className="w-[38px] h-[38px] rounded-xl flex items-center justify-center border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--muted)] cursor-pointer"><IconLeft /></button>
-          <button onClick={() => setMonth(new Date(y, m + 1, 1))} aria-label="Next month" className="w-[38px] h-[38px] rounded-xl flex items-center justify-center border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--muted)] cursor-pointer"><IconRight /></button>
+          <button onClick={() => setMonth(new Date(y, m - 1, 1))} aria-label={t('Previous month')} className="w-[38px] h-[38px] rounded-xl flex items-center justify-center border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--muted)] cursor-pointer"><IconLeft /></button>
+          <button onClick={() => setMonth(new Date(y, m + 1, 1))} aria-label={t('Next month')} className="w-[38px] h-[38px] rounded-xl flex items-center justify-center border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--muted)] cursor-pointer"><IconRight /></button>
         </div>
       </header>
 
       <div className="px-4">
         <div className="grid grid-cols-7 text-[11px] font-bold tracking-[0.08em] uppercase text-[var(--muted)] text-center py-1">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((w) => <span key={w}>{w}</span>)}
+          {weekdays().map((w) => <span key={w}>{w}</span>)}
         </div>
         <div className="grid grid-cols-7 gap-[3px]">
           {Array.from({ length: weeks * 7 }).map((_, i) => {
             const d = addDays(start, i), k = iso(d), ps = pinned(k);
             return (
               <button key={k} type="button" onClick={() => pick(k)}
-                aria-label={`${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}, ${ps.length} pinned`}
+                aria-label={t('{date}, {n} pinned', { date: fmt(d, { weekday: 'long', day: 'numeric', month: 'long' }), n: ps.length })}
                 className={`min-h-[70px] bg-[var(--surface)] rounded-[10px] p-1 flex flex-col items-stretch gap-0.5 text-left border-2 cursor-pointer min-w-0 ${d.getMonth() !== m ? 'opacity-40' : ''} ${k === selDay ? 'border-[var(--accent)]' : 'border-transparent'}`}>
                 <span className={`text-[13px] font-semibold self-center w-6 h-6 flex items-center justify-center rounded-full tabular-nums ${k === T ? 'bg-[var(--sun)] text-[#3A2C00] font-extrabold' : 'text-[var(--ink)]'}`}>{d.getDate()}</span>
                 {ps.slice(0, 2).map((p) => p.kind === 'event' ? (
@@ -76,17 +77,17 @@ export function CalendarView({ onSeeTasks }: { onSeeTasks: (k: string) => void }
 
         <section className="mt-[18px] bg-[var(--surface)] rounded-[20px] p-4 pb-2 shadow-[var(--shadow)]">
           <h3 className="font-display font-semibold text-[19px] text-[var(--ink)] mb-1">
-            {selDay === T ? 'Today, ' : ''}{fmt(fromIso(selDay), { weekday: 'long', day: 'numeric', month: 'long' })}
+            {selDay === T ? t('Today, ') : ''}{(selDay === T ? (s: string) => s : cap)(fmt(fromIso(selDay), { weekday: 'long', day: 'numeric', month: 'long' }))}
           </h3>
           {pins.length ? (
             <ul className="list-none m-0 p-0">
               {pins.map((p) => { const r = real(p); if (!r) return null; return p.kind === 'event' ? <EventRow key={p.id} e={r as CalendarEvent} /> : <TaskRow key={p.id} t={r as Task} />; })}
             </ul>
-          ) : <p className="text-[var(--muted)] text-[14px] py-2">Nothing pinned on this day yet.</p>}
+          ) : <p className="text-[var(--muted)] text-[14px] py-2">{t('Nothing pinned on this day yet.')}</p>}
           <div className="flex gap-4 flex-wrap py-2.5 pt-3">
-            <button onClick={() => editEvent(null, selDay)} className={cls.link}>+ Add event</button>
-            {tc > 0 && <button onClick={() => onSeeTasks(selDay)} className={cls.link}>See {tc} more task{tc > 1 ? 's' : ''} without a time</button>}
-            {selDay !== T && <button onClick={() => pick(T)} className={cls.link}>Back to today</button>}
+            <button onClick={() => editEvent(null, selDay)} className={cls.link}>{t('+ Add event')}</button>
+            {tc > 0 && <button onClick={() => onSeeTasks(selDay)} className={cls.link}>{tc > 1 ? t('See {n} more tasks without a time', { n: tc }) : t('See 1 more task without a time')}</button>}
+            {selDay !== T && <button onClick={() => pick(T)} className={cls.link}>{t('Back to today')}</button>}
           </div>
         </section>
       </div>

@@ -4,6 +4,7 @@
 
 import { app, emit, idbDel, idbGet, toast } from './store';
 import type { FileRecord, FileRef } from '@/types';
+import { t } from './i18n';
 
 export const MAXFILE = 10 * 1024 * 1024; // 10 MB
 const DOC_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.rtf,.odt,.ods,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
@@ -15,11 +16,11 @@ export function setFiles(x: { files?: FileRef[] }, files: FileRef[]) { x.files =
 const fileKind = (n: string) => {
   const e = (String(n).split('.').pop() || '').toLowerCase();
   return e === 'pdf' ? 'PDF' : ['doc', 'docx', 'odt', 'rtf'].includes(e) ? 'Word'
-    : ['xls', 'xlsx', 'csv', 'ods'].includes(e) ? 'Excel' : ['ppt', 'pptx'].includes(e) ? 'Slides'
-    : e.toUpperCase().slice(0, 5) || 'File';
+    : ['xls', 'xlsx', 'csv', 'ods'].includes(e) ? 'Excel' : ['ppt', 'pptx'].includes(e) ? t('Slides')
+    : e.toUpperCase().slice(0, 5) || t('File');
 };
 export const isImage = (f: { type: string; name: string }) => String(f.type).startsWith('image/') || /\.(jpe?g|png|gif|webp|heic)$/i.test(f.name);
-export const kindOf = (f: FileRef) => (isImage(f) ? 'Photo' : fileKind(f.name));
+export const kindOf = (f: FileRef) => (isImage(f) ? t('Photo') : fileKind(f.name));
 export const sizeText = (b: number) => (b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toFixed(1) + ' MB');
 
 export const blobToB64 = (b: Blob) => new Promise<string>((res, rej) => {
