@@ -6,6 +6,8 @@ This branch holds the **built** app that GitHub Pages serves. The source code is
 [`next-version`](https://github.com/ekaynak2026-droid/dayline/tree/next-version) branch (folder `web/`).
 To publish a new version: in `web/`, run `DAYLINE_TEST=0 DAYLINE_BASE=/dayline npm run build`,
 then copy the contents of `web/out/` here (keep `test/`, `.nojekyll` and the guides).
+Every push that changes `web/` is also built automatically by GitHub Actions, and the finished
+files are saved on the branch `<branch>-build` (for example `next-version-build`), ready to copy here.
 
 - `test/` forwards the old test address to the main app.
 - The previous version (plain HTML/JS) is kept on the `live-backup-v1.5.1` branch.
