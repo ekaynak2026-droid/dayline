@@ -12,6 +12,8 @@ function detect(): Lang {
   return /^ru\b/i.test(navigator.language || '') ? 'ru' : 'en';
 }
 let lang: Lang = detect();
+// Tell the browser which language the page is in, so it doesn't offer to machine-translate it.
+if (typeof document !== 'undefined') document.documentElement.lang = lang;
 export const getLang = () => lang;
 /** Changes the language. The caller redraws the screen. */
 export function setLang(l: Lang) {
@@ -22,15 +24,22 @@ export function setLang(l: Lang) {
 /** For dates: "30 October" / "30 октября". */
 export const locale = () => (lang === 'ru' ? 'ru-RU' : 'en-GB');
 
+/** Russian number endings: 1 заметка, 2 заметки, 5 заметок. */
+function ruForm(n: number, forms: string[]) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  return forms[a > 10 && a < 20 ? 2 : b === 1 ? 0 : b >= 2 && b <= 4 ? 1 : 2];
+}
+
 export function t(en: string, vars?: Record<string, string | number>) {
-  let s = lang === 'ru' ? RU[en] ?? en : en;
+  const v = lang === 'ru' ? RU[en] : undefined;
+  let s = v === undefined ? en : Array.isArray(v) ? ruForm(Number(vars?.n ?? 0), v) : v;
   if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
   return s;
 }
 /** Short weekday names, Monday first. */
 export const weekdays = () => (lang === 'ru' ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
 
-const RU: Record<string, string> = {
+const RU: Record<string, string | string[]> = {
   // tabs and common buttons
   'Tasks': 'Задачи', 'Calendar': 'Календарь', 'Notes': 'Заметки', 'Settings': 'Настройки',
   'Today': 'Сегодня', 'Tomorrow': 'Завтра', 'Yesterday': 'Вчера',
@@ -42,7 +51,7 @@ const RU: Record<string, string> = {
   'Language': 'Язык',
 
   // reminders
-  'No reminder': 'Без напоминания', 'At the time': 'В момент события', '10 minutes before': 'За 10 минут',
+  'No reminder': 'Без напоминания', 'At the time': 'В назначенное время', '10 minutes before': 'За 10 минут',
   '1 hour before': 'За 1 час', '1 day before': 'За 1 день', 'Reminder': 'Напоминание',
   'Reminder: {title}': 'Напоминание: {title}', '{day} at {time}': '{day} в {time}',
   'Add Dayline to your Home Screen first': 'Сначала добавьте Dayline на экран «Домой»',
@@ -57,21 +66,21 @@ const RU: Record<string, string> = {
   'Connect to the internet to open this file on this device': 'Подключитесь к интернету, чтобы открыть этот файл на этом устройстве',
   'This file is not on this device yet': 'Этого файла пока нет на этом устройстве',
   '{name} is bigger than 10 MB': '{name} больше 10 МБ',
-  'Preview {name}': 'Просмотр: {name}', 'Download {name}': 'Скачать: {name}', 'Remove {name}': 'Убрать: {name}',
+  'Preview {name}': 'Просмотр: {name}', 'Download {name}': 'Скачать: {name}', 'Remove {name}': 'Удалить: {name}',
   '📂 Files and photos': '📂 Файлы и фото', 'Files and photos': 'Файлы и фото', '📂 Files': '📂 Файлы',
   'No files yet': 'Файлов пока нет', 'Attach file or photo': 'Прикрепить файл или фото',
   'Files and photos ({n})': 'Файлы и фото ({n})', 'Files saved': 'Файлы сохранены',
 
   // tasks and events
-  'Mark as done': 'Отметить как выполненную', 'Mark as not done': 'Снять отметку', 'All day': 'Весь день',
+  'Mark as done': 'Отметить как выполненное', 'Mark as not done': 'Снять отметку', 'All day': 'Весь день',
   'Task added': 'Задача добавлена', 'Task saved': 'Задача сохранена', 'Task deleted': 'Задача удалена',
   'New task': 'Новая задача', 'Edit task': 'Изменить задачу', 'Task': 'Задача', 'What do you need to do?': 'Что нужно сделать?',
   'Day': 'День', 'Time (optional)': 'Время (необязательно)',
-  'Event pinned': 'Событие добавлено', 'Event saved': 'Событие сохранено', 'Event deleted': 'Событие удалено',
+  'Event pinned': 'Событие добавлено в календарь', 'Event saved': 'Событие сохранено', 'Event deleted': 'Событие удалено',
   'Give the event a name first': 'Сначала дайте событию название',
   'New event': 'Новое событие', 'Edit event': 'Изменить событие', 'Event': 'Событие',
   'e.g. Dentist, Birthday, Flight': 'например: Стоматолог, День рождения, Рейс',
-  'Date': 'Дата', 'Time (empty = all day)': 'Время (пусто = весь день)', 'Colour': 'Цвет', 'Colour {n}': 'Цвет {n}',
+  'Date': 'Дата', 'Time (empty = all day)': 'Время (пусто — весь день)', 'Colour': 'Цвет', 'Colour {n}': 'Цвет {n}',
   "Also add to my phone's calendar": 'Добавить также в календарь телефона',
   'Moved to today': 'Перенесено на сегодня', 'You can find this again in Settings': 'Это можно найти в настройках',
   'Not now': 'Не сейчас', 'Install': 'Установить',
@@ -84,26 +93,26 @@ const RU: Record<string, string> = {
   'Open this page in Chrome.': 'Откройте эту страницу в Chrome.',
   'Tap the ⋮ menu at the top right.': 'Нажмите меню ⋮ в правом верхнем углу.',
   'Tap Install app or Add to Home screen.': 'Нажмите «Установить приложение» или «Добавить на главный экран».',
-  '{n} unfinished from earlier days': 'Не выполнено с прошлых дней: {n}', 'Move to today': 'Перенести на сегодня',
+  '{n} unfinished from earlier days': ['{n} невыполненная задача с прошлых дней', '{n} невыполненные задачи с прошлых дней', '{n} невыполненных задач с прошлых дней'], 'Move to today': 'Перенести на сегодня',
   'Type below to add your first task. Tap + to give it a time or a reminder.': 'Напишите ниже свою первую задачу. Нажмите +, чтобы указать время или напоминание.',
-  'Add a task for {name}': 'Добавить задачу: {name}', 'Add a task for today': 'Добавить задачу на сегодня', 'Add a task': 'Добавить задачу',
+  'Add a task for {name}': 'Добавить задачу на {name}', 'Add a task for today': 'Добавить задачу на сегодня', 'Add a task': 'Добавить задачу',
 
   // calendar
   'Previous month': 'Предыдущий месяц', 'Next month': 'Следующий месяц', 'Today, ': 'Сегодня, ',
-  '{date}, {n} pinned': '{date}, записей: {n}', 'Nothing pinned on this day yet.': 'На этот день пока ничего нет.',
+  '{date}, {n} pinned': ['{date}, {n} запись', '{date}, {n} записи', '{date}, {n} записей'], '+{n} more': 'ещё {n}', 'Nothing pinned on this day yet.': 'На этот день пока ничего не запланировано.',
   '+ Add event': '+ Добавить событие', 'Back to today': 'Вернуться к сегодня',
-  'See 1 more task without a time': 'Ещё задачи без времени: 1', 'See {n} more tasks without a time': 'Ещё задачи без времени: {n}',
+  'See 1 more task without a time': 'Показать ещё 1 задачу без времени', 'See {n} more tasks without a time': ['Показать ещё {n} задачу без времени', 'Показать ещё {n} задачи без времени', 'Показать ещё {n} задач без времени'],
 
   // notes
   'All': 'Все', 'Checklists': 'Списки', 'With photos': 'С фото', 'With files': 'С файлами',
-  'Untitled': 'Без названия', '{left} of {n} left': 'Осталось {left} из {n}', '{n} files': 'Файлов: {n}',
+  'Untitled': 'Без названия', '{left} of {n} left': 'Осталось {left} из {n}', '{n} files': ['{n} файл', '{n} файла', '{n} файлов'],
   'No photo notes yet. Tap + and choose "Photo note".': 'Заметок с фото пока нет. Нажмите + и выберите «Заметка с фото».',
   'No files yet. Open a note or checklist and attach a file.': 'Файлов пока нет. Откройте заметку или список и прикрепите файл.',
   'No checklists yet. Tap + and choose "Checklist".': 'Списков пока нет. Нажмите + и выберите «Список».',
   'No notes yet. Tap + to write one, like a shopping list.': 'Заметок пока нет. Нажмите +, чтобы написать, например, список покупок.',
-  'Locked notes': 'Защищённые заметки', 'Lock now': 'Заблокировать', 'Locked': 'Заблокировано',
+  'Locked notes': 'Защищённые заметки', 'Lock now': 'Заблокировать сейчас', 'Locked': 'Заблокировано',
   'No locked notes yet. Tap + and choose "Locked note".': 'Защищённых заметок пока нет. Нажмите + и выберите «Защищённая заметка».',
-  '1 locked note': 'Защищённые заметки: 1', '{n} locked notes': 'Защищённые заметки: {n}',
+  '1 locked note': '1 защищённая заметка', '{n} locked notes': ['{n} защищённая заметка', '{n} защищённые заметки', '{n} защищённых заметок'],
   'Set up locked notes': 'Настроить защищённые заметки', 'Tap and enter your PIN to open': 'Нажмите и введите PIN, чтобы открыть',
   'For passwords, codes and other private things. Choose a 6-digit PIN.': 'Для паролей, кодов и других личных данных. Выберите 6-значный PIN.',
   'Locked notes are encrypted on this phone with your PIN. Nobody, including me, can open them without it, so keep your PIN somewhere safe. They lock again a minute after you leave the app.':
@@ -113,12 +122,12 @@ const RU: Record<string, string> = {
   'Photo note': 'Заметка с фото', 'A picture with a few words, like a parking spot or a receipt': 'Снимок с подписью, например место парковки или чек',
   'Locked note': 'Защищённая заметка', 'Passwords and codes, encrypted with your PIN': 'Пароли и коды, зашифрованные вашим PIN-кодом',
   'New checklist': 'Новый список', 'New photo note': 'Новая заметка с фото', 'New locked note': 'Новая защищённая заметка', 'Edit note': 'Изменить заметку',
-  'Title': 'Название', 'e.g. Shopping list': 'например: Список покупок', 'e.g. Bank app login': 'например: Вход в банк', 'e.g. Where I parked': 'например: Где я оставил машину',
-  'Items': 'Пункты', 'Item': 'Пункт', 'Remove item': 'Удалить пункт', '+ Add item': '+ Добавить пункт',
+  'Title': 'Название', 'e.g. Shopping list': 'например: Список покупок', 'e.g. Bank app login': 'например: Вход в банк', 'e.g. Where I parked': 'например: Где припаркована машина',
+  'Items': 'Пункты', 'Item': 'Пункт списка', 'Remove item': 'Удалить пункт', '+ Add item': '+ Добавить пункт',
   'Note': 'Заметка', 'Write anything…': 'Напишите что угодно…', 'Attached photo': 'Прикреплённое фото',
   'Change photo': 'Сменить фото', 'Attach a photo': 'Прикрепить фото', 'Remove photo': 'Убрать фото',
   'Keep in locked notes (encrypted, needs your PIN)': 'Хранить в защищённых заметках (шифруется, нужен PIN)',
-  'That file is not a photo Dayline can read': 'Dayline не может прочитать это фото',
+  'That file is not a photo Dayline can read': 'Этот файл не похож на фото, которое можно открыть',
   'Notes with files cannot be locked yet. Remove the files first.': 'Заметки с файлами пока нельзя защитить. Сначала уберите файлы.',
   'Write something first': 'Сначала что-нибудь напишите', 'Saved and locked': 'Сохранено и защищено',
   'Note saved': 'Заметка сохранена', 'Could not save the note': 'Не удалось сохранить заметку', 'Note deleted': 'Заметка удалена',
@@ -128,7 +137,7 @@ const RU: Record<string, string> = {
   'You will type it to open locked notes. If you forget it, those notes cannot be recovered.': 'Он нужен, чтобы открывать защищённые заметки. Если вы его забудете, восстановить их будет невозможно.',
   'Locked notes stay encrypted until you enter it.': 'Защищённые заметки остаются зашифрованными, пока вы его не введёте.',
   'Type it once more': 'Введите ещё раз', 'Just to be sure it is right.': 'Чтобы убедиться, что всё верно.',
-  'Those did not match. Start again.': 'Не совпадает. Начните заново.', 'Securing your notes…': 'Защищаем заметки…', 'Checking…': 'Проверяем…',
+  'Those did not match. Start again.': 'Не совпадает. Начните заново.', 'Securing your notes…': 'Шифруем заметки…', 'Checking…': 'Проверяем…',
   'PIN changed': 'PIN изменён', 'PIN set. Locked notes are ready': 'PIN установлен. Защищённые заметки готовы',
   'Wrong PIN. Try again.': 'Неверный PIN. Попробуйте ещё раз.',
   'Locked notes need a secure (https) connection.': 'Для защищённых заметок нужно защищённое (https) соединение.',
@@ -144,7 +153,7 @@ const RU: Record<string, string> = {
   'Use the same email and password on your phone and computer, and everything stays the same on both.': 'Используйте один и тот же email и пароль на телефоне и компьютере — и всё будет одинаково на обоих.',
   'Email': 'Email', 'Password': 'Пароль', 'Sign in': 'Войти', 'Create account': 'Создать аккаунт', 'Forgot password': 'Забыли пароль?',
   'Account created. Syncing…': 'Аккаунт создан. Синхронизация…', 'Password reset email sent': 'Письмо для сброса пароля отправлено',
-  'just now': 'только что', '{n} min ago': '{n} мин назад',
+  'just now': 'только что', '{n} min ago': '{n} мин. назад',
   'That email and password do not match.': 'Email и пароль не совпадают.',
   'There is no account with that email yet. Tap "Create account".': 'Аккаунта с таким email пока нет. Нажмите «Создать аккаунт».',
   'An account with that email already exists. Tap "Sign in" instead.': 'Аккаунт с таким email уже есть. Нажмите «Войти».',
@@ -177,7 +186,7 @@ const RU: Record<string, string> = {
   'Change my PIN': 'Изменить PIN', 'You will need your current PIN first': 'Сначала понадобится текущий PIN', 'I forgot my PIN': 'Я забыл PIN',
   'Not set up yet. Open the Notes tab to start.': 'Ещё не настроено. Откройте вкладку «Заметки».', 'Install Dayline': 'Установить Dayline',
   'Preparing backup…': 'Готовим резервную копию…', 'Backup file saved': 'Резервная копия сохранена',
-  'Backup saved, but {n} file(s) were not on this device': 'Копия сохранена, но файлов не было на устройстве: {n}',
+  'Backup saved, but {n} file(s) were not on this device': ['Копия сохранена, но {n} файла нет на этом устройстве', 'Копия сохранена, но {n} файлов нет на этом устройстве', 'Копия сохранена, но {n} файлов нет на этом устройстве'],
   'That is not a Dayline backup file': 'Это не резервная копия Dayline', 'Restore this backup?': 'Восстановить эту копию?',
   'This replaces all tasks, events and notes on this phone with the backup{from}: {t} tasks, {e} events, {n} notes.':
     'Все задачи, события и заметки на этом телефоне будут заменены копией{from}: задач — {t}, событий — {e}, заметок — {n}.',
@@ -188,11 +197,11 @@ const RU: Record<string, string> = {
   'Keep them': 'Оставить', 'Delete locked notes': 'Удалить защищённые заметки', 'Locked notes deleted': 'Защищённые заметки удалены',
 
   // viewer
-  'Opening…': 'Открываем…', '1 page': '1 страница', '{n} pages': 'Страниц: {n}', 'This document is empty.': 'Документ пуст.',
+  'Opening…': 'Открываем…', '1 page': '1 страница', '{n} pages': ['{n} страница', '{n} страницы', '{n} страниц'], 'This document is empty.': 'Документ пуст.',
   "This kind of file ({ext}) can't be shown inside Dayline.": 'Файлы такого типа ({ext}) нельзя показать в Dayline.',
   'Older Word files (.doc) need Word; files saved as .docx open here.': 'Старые файлы Word (.doc) открываются только в Word; файлы .docx открываются здесь.',
   'Tap Download to open it in another app.': 'Нажмите «Скачать», чтобы открыть его в другом приложении.',
   'The viewer could not load. Connect to the internet once and try again.': 'Просмотр не загрузился. Подключитесь к интернету и попробуйте снова.',
-  'Dayline could not read this file. It may be damaged or password-protected.': 'Dayline не смог прочитать файл. Возможно, он повреждён или защищён паролем.',
+  'Dayline could not read this file. It may be damaged or password-protected.': 'Не удалось прочитать файл. Возможно, он повреждён или защищён паролем.',
   'You can still tap Download.': 'Вы всё равно можете нажать «Скачать».',
 };

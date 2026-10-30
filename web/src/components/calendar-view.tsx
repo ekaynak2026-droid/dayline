@@ -61,15 +61,15 @@ export function CalendarView({ onSeeTasks }: { onSeeTasks: (k: string) => void }
             return (
               <button key={k} type="button" onClick={() => pick(k)}
                 aria-label={t('{date}, {n} pinned', { date: fmt(d, { weekday: 'long', day: 'numeric', month: 'long' }), n: ps.length })}
-                className={`min-h-[70px] bg-[var(--surface)] rounded-[10px] p-1 flex flex-col items-stretch gap-0.5 text-left border-2 cursor-pointer min-w-0 ${d.getMonth() !== m ? 'opacity-40' : ''} ${k === selDay ? 'border-[var(--accent)]' : 'border-transparent'}`}>
+                className={`min-h-[70px] bg-[var(--surface)] rounded-[10px] px-0.5 py-1 flex flex-col items-stretch gap-0.5 text-left border-2 cursor-pointer min-w-0 ${d.getMonth() !== m ? 'opacity-40' : ''} ${k === selDay ? 'border-[var(--accent)]' : 'border-transparent'}`}>
                 <span className={`text-[13px] font-semibold self-center w-6 h-6 flex items-center justify-center rounded-full tabular-nums ${k === T ? 'bg-[var(--sun)] text-[#3A2C00] font-extrabold' : 'text-[var(--ink)]'}`}>{d.getDate()}</span>
                 {ps.slice(0, 2).map((p) => p.kind === 'event' ? (
-                  <span key={p.id} className="text-[10px] leading-tight font-semibold rounded-[3px] px-1 py-0.5 truncate text-[var(--ink)]"
+                  <span key={p.id} className="text-[10px] leading-tight font-semibold rounded-[3px] px-[3px] py-0.5 overflow-hidden whitespace-nowrap text-[var(--ink)]"
                     style={{ borderLeft: `3px solid ${colorVar(p.color)}`, backgroundColor: `color-mix(in srgb, ${colorVar(p.color)} 18%, var(--surface))` }}>{p.title}</span>
                 ) : (
-                  <span key={p.id} className={`text-[10px] leading-tight font-semibold rounded-[3px] px-1 py-0.5 truncate border-l-[3px] border-[var(--muted)] bg-[var(--bg)] ${p.done ? 'line-through text-[var(--done)]' : 'text-[var(--ink)]'}`}>{p.text}</span>
+                  <span key={p.id} className={`text-[10px] leading-tight font-semibold rounded-[3px] px-[3px] py-0.5 overflow-hidden whitespace-nowrap border-l-[3px] border-[var(--muted)] bg-[var(--bg)] ${p.done ? 'line-through text-[var(--done)]' : 'text-[var(--ink)]'}`}>{p.text}</span>
                 ))}
-                {ps.length > 2 && <span className="text-[10px] text-[var(--muted)] text-center font-semibold">+{ps.length - 2} more</span>}
+                {ps.length > 2 && <span className="text-[10px] text-[var(--muted)] text-center font-semibold whitespace-nowrap">{t('+{n} more', { n: ps.length - 2 })}</span>}
               </button>
             );
           })}
