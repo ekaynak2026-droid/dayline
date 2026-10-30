@@ -43,7 +43,7 @@ function drawOp(ctx: CanvasRenderingContext2D, op: Op) {
     ctx.font = `600 ${FONT[SIZES.indexOf(op.s)] || 56}px Figtree, system-ui, sans-serif`;
     ctx.textBaseline = 'top';
     op.text.split('\n').forEach((line, i) => ctx.fillText(line, op.at[0], op.at[1] + i * (FONT[SIZES.indexOf(op.s)] || 56) * 1.25));
-  } else {
+  } else if ('a' in op) {
     ctx.lineWidth = op.s;
     const [x1, y1] = op.a, [x2, y2] = op.b;
     ctx.beginPath();
