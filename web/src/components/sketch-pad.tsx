@@ -124,11 +124,15 @@ export function SketchPad() {
     ops.current.forEach((o) => drawOp(ctx, o));
   }, []);
 
+  const curRef = useRef<Draft | null>(null);
+  // Saves a moment after the last change, with the draft's latest name and paper.
   const persist = useCallback((d: Draft | null) => {
     if (!d) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      try { await updateDraft(d, await canvasBlob(ink.current!)); setDrafts(await listDrafts()); }
+      saveTimer.current = undefined;
+      const now = curRef.current; if (!now || now.id !== d.id || !ink.current) return;
+      try { await updateDraft(now, await canvasBlob(ink.current)); setDrafts(await listDrafts()); }
       catch { toast('Could not save. Your phone may be out of space.'); }
     }, 700);
   }, []);
@@ -139,6 +143,8 @@ export function SketchPad() {
     if (b) { try { base.current = await blobToImage(b); } catch { /* damaged picture: start blank */ } }
     setCur(d); redraw(); bump();
   }, [redraw]);
+
+  useEffect(() => { curRef.current = cur; }, [cur]);
 
   // Open the latest draft, or start the first one.
   useEffect(() => {
