@@ -1,5 +1,6 @@
 # Builds the web app (folder web/) and saves the finished files on the branch "<branch>-build",
-# ready to be copied to "main" for GitHub Pages. Runs on every push to a branch that changes web/.
+# so a build can be checked before release. Runs on every push to a branch that changes web/,
+# except "live" (that one is published by deploy-live.yml).
 name: Build web app
 on:
   push:
@@ -10,7 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ !endsWith(github.ref_name, '-build') }}
+    if: ${{ !endsWith(github.ref_name, '-build') && github.ref_name != 'live' }}
     defaults: { run: { working-directory: web } }
     steps:
       - uses: actions/checkout@v4

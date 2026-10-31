@@ -1,0 +1,43 @@
+# Publishes the app. Every time the "live" branch changes (for example when "dev" is merged
+# into "live"), this builds the web app and puts the finished files on "main", which is the
+# branch GitHub Pages serves at https://ekaynak2026-droid.github.io/dayline/.
+# Nobody needs to edit "main" by hand any more: it is only the published copy of "live".
+name: Deploy live
+on:
+  push:
+    branches: [live]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: deploy-live
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+        working-directory: web
+      - run: npx tsc --noEmit
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+        env: { DAYLINE_TEST: '0', DAYLINE_BASE: /dayline }
+      - name: Put the built files on main
+        run: |
+          git clone -q --depth 1 --branch main \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" site
+          cd site
+          # Keep the files that live only on main (guides, the old /test/ redirect), replace the rest.
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .nojekyll ! -name README.md \
+            ! -name SYNC-SETUP.md ! -name WALKTHROUGH.md ! -name test -exec rm -rf {} +
+          cp -a ../web/out/. .
+          touch .nojekyll
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
+          git commit -qm "Deploy live ${GITHUB_SHA::7}"
+          git push -q origin HEAD:main

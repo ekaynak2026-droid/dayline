@@ -37,6 +37,19 @@ Dayline-Checklist/
 
 ---
 
+## 🌿 Branches
+
+| Branch | What it is for |
+|--------|----------------|
+| `dev`  | All development happens here. New work branches off `dev` and is merged back into `dev`. |
+| `live` | The released version. When work on `dev` is finished and ready for release, merge `dev` into `live`. |
+| `main` | The published website only. It is filled automatically by `.github/workflows/deploy-live.yml` every time `live` changes; do not edit it by hand. |
+
+Releasing: open a pull request from `dev` into `live` and merge it. A minute or two later the new
+version is on https://ekaynak2026-droid.github.io/dayline/.
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. 🌐 Web Application (Next.js)
