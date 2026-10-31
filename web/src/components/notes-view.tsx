@@ -13,6 +13,8 @@ import { t } from '@/lib/i18n';
 import { FileBox, useFileBox } from './file-box';
 import { ensureVault } from './pin-sheet';
 import { Copybook, isPage } from './copybook';
+import { WorkbookCard } from './workbook';
+import { isWorkbook } from '@/lib/workbook';
 import { IconCamera, IconClip, IconList, IconLock, IconText } from './icons';
 import { Actions, Sheet, cls } from './ui';
 
@@ -50,7 +52,7 @@ export function NotesView() {
   const { S, vaultKey, vaultNotes } = useApp();
   const [filter, setFilterState] = useState<Filter>(getNoteFilter);
   const setFilter = (f: Filter) => { setNoteFilter(f); setFilterState(f); };
-  const open = S.notes.filter((n) => !isPage(n)).sort((a, b) => b.updated - a.updated);
+  const open = S.notes.filter((n) => !isPage(n) && !isWorkbook(n)).sort((a, b) => b.updated - a.updated);
   const locked = [...vaultNotes].sort((a, b) => b.updated - a.updated);
   const shown = open.filter((n) => filter === 'all' || (filter === 'lists' && n.type === 'list') || (filter === 'photos' && n.photo) || (filter === 'files' && filesOf(n).length));
   const emptyText = t(filter === 'photos' ? 'No photo notes yet. Tap + and choose "Photo note".'
@@ -73,6 +75,9 @@ export function NotesView() {
         {shown.length ? (
           <div className="grid grid-cols-2 gap-2.5 items-start">{shown.map((n) => <NoteCard key={n.id} n={n} />)}</div>
         ) : <p className="text-center text-[var(--muted)] py-8 text-sm">{emptyText}</p>}
+
+        <h2 className="font-display font-semibold text-lg text-[var(--ink)] mt-6 mb-2">{t('AI task workbook')}</h2>
+        <WorkbookCard />
 
         <h2 className="font-display font-semibold text-lg text-[var(--ink)] mt-6 mb-1">{t('Copybook')}</h2>
         <Copybook />
