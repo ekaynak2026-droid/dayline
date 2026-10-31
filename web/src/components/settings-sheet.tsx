@@ -1,5 +1,5 @@
 'use client';
-// Settings: reminders, sync, backup and restore, locked-note PIN, installing.
+// Settings: reminders, sync, the optional AI assistant, backup and restore, locked-note PIN, installing.
 
 import React, { useState } from 'react';
 import type { State } from '@/types';
@@ -17,6 +17,7 @@ import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
 import { Sheet, cls } from './ui';
+import { aiEnabled, setAiKey, testKey } from '@/lib/ai';
 
 export function openSettings() { openSheet(<SettingsSheet key={Date.now()} />); }
 
@@ -52,6 +53,43 @@ function SyncPanel() {
         <button type="button" onClick={() => createAccount(email.trim(), pass).then(() => { if (syncStatus().signedIn) toast('Account created. Syncing…'); })} className={cls.ghost + ' text-[var(--accent)]'}>{t('Create account')}</button>
         <button type="button" onClick={() => resetPassword(email.trim()).then(() => { if (!syncStatus().error) toast('Password reset email sent'); })} className={cls.ghost}>{t('Forgot password')}</button>
       </div>
+    </form>
+  );
+}
+
+/** The optional AI assistant: the user's own Gemini key, kept only on this device. */
+function AiPanel() {
+  useApp();
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [confirm, setConfirm] = useState(false);
+  const saveKey = async () => {
+    const k = key.trim(); if (!k) return;
+    setBusy(true); setErr('');
+    const why = await testKey(k);
+    setBusy(false);
+    if (why) { setErr(t(why)); return; }
+    setAiKey(k); setKey(''); toast('AI assistant is on');
+  };
+  if (aiEnabled()) return (
+    <div className="grid gap-2">
+      <p className={cls.info}><b className="text-[var(--ink)]">{t('The AI assistant is on (Gemini 3.6 Flash).')}</b> {t('Open the Helper tab and choose Assistant. Your key is saved only on this device.')}</p>
+      {confirm
+        ? <div className="flex flex-wrap gap-2 items-center text-[14px]"><span className="text-[var(--ink)]">{t('Remove the key from this device? You can paste it again later.')}</span>
+            <button type="button" onClick={() => { setAiKey(null); setConfirm(false); toast('Key removed'); }} className={cls.primary + ' !bg-[var(--danger)]'}>{t('Remove')}</button>
+            <button type="button" onClick={() => setConfirm(false)} className={cls.ghost}>{t('Cancel')}</button></div>
+        : <div><button type="button" onClick={() => setConfirm(true)} className={cls.link + ' py-1 !text-[var(--danger)]'}>{t('Turn off and remove the key')}</button></div>}
+    </div>
+  );
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); saveKey(); }} className="grid gap-1.5">
+      <p className={cls.info}>{t('Adds an assistant to the Helper tab: chat about your tasks and get advice for each one. It uses Google Gemini with your own key. When you ask something, your open tasks and coming events are sent to Google to get the answer.')}</p>
+      <label htmlFor="ai-key" className={cls.label}>{t('Gemini API key')}</label>
+      <input id="ai-key" type="password" autoComplete="off" autoCapitalize="off" spellCheck={false} value={key} onChange={(e) => { setKey(e.target.value); setErr(''); }} placeholder={t('Paste your key here')} className={cls.input} />
+      <p className="m-0 text-[13px] text-[var(--muted)]">{t('The key is saved only on this device. It is not synced and not put in backups, so paste it once on each phone or computer.')} <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className={cls.link}>{t('Get a key')}</a></p>
+      {err && <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{err}</p>}
+      <div className="mt-1"><button type="submit" disabled={busy || !key.trim()} className={cls.primary}>{t(busy ? 'Checking the key…' : 'Save key')}</button></div>
     </form>
   );
 }
@@ -134,6 +172,9 @@ function SettingsSheet() {
 
         <h4 className={cls.h4}>{t('Sync between devices')}</h4>
         <SyncPanel />
+
+        <h4 className={cls.h4}>{t('AI assistant (optional)')}</h4>
+        <AiPanel />
 
         <h4 className={cls.h4}>{t('Backup')}</h4>
         <p className={cls.info}>{t(S.sync?.uid ? 'Your data is also kept in your sync account.' : 'Everything is stored only on this device.')} {t('Save a backup file now and then, for example to iCloud Drive or Google Drive.')} {S.lastBackup ? t('Last backup: {ago}.', { ago: ago(S.lastBackup) }) : t('You have not made a backup yet.')}</p>
