@@ -1,8 +1,8 @@
 // Service worker: keeps a copy of the app on the phone so it opens without internet.
 // The list of app files and the version below are filled in automatically after each build
 // (scripts/sw-shell.mjs), so every new version replaces the old saved copy.
-const CACHE = 'dayline-next-mvwszvqj';
-const SHELL = ['./', '_next/static/D07QpfWCzBEJLT_WdpF5D/_buildManifest.js', '_next/static/D07QpfWCzBEJLT_WdpF5D/_clientMiddlewareManifest.js', '_next/static/D07QpfWCzBEJLT_WdpF5D/_ssgManifest.js', '_next/static/chunks/0cz1d0mv5g_q7.js', '_next/static/chunks/0umf92h1sb77c.js', '_next/static/chunks/2gwac6bb7sp1t.js', '_next/static/chunks/2qa8uj28w27z8.css', '_next/static/chunks/2wygtw8ak_ih9.js', '_next/static/chunks/3cfn99dbrcvvp.js', '_next/static/chunks/3wbm-994r45kr.js', '_next/static/chunks/turbopack-0eowb_3f-uy_3.js', '_next/static/media/favicon.117ezoe8m31dk.ico', 'favicon.ico', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon.svg', 'index.html', 'manifest.webmanifest'];
+const CACHE = 'dayline-next-mvwuip1j';
+const SHELL = ['./', '_next/static/9in8KO9DyeJ3L8MsBumUe/_buildManifest.js', '_next/static/9in8KO9DyeJ3L8MsBumUe/_clientMiddlewareManifest.js', '_next/static/9in8KO9DyeJ3L8MsBumUe/_ssgManifest.js', '_next/static/chunks/0cz1d0mv5g_q7.js', '_next/static/chunks/0umf92h1sb77c.js', '_next/static/chunks/26aagj8_7_ee_.js', '_next/static/chunks/2wygtw8ak_ih9.js', '_next/static/chunks/3cfn99dbrcvvp.js', '_next/static/chunks/3s1wd7kkqc1rf.css', '_next/static/chunks/3wbm-994r45kr.js', '_next/static/chunks/turbopack-0eowb_3f-uy_3.js', '_next/static/media/favicon.117ezoe8m31dk.ico', 'favicon.ico', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/icon.svg', 'index.html', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
