@@ -229,6 +229,20 @@ const RU: Record<string, string | string[]> = {
   'Keep Dayline open with the screen on, on Wi-Fi. It downloads in small parts: if it stops, tap Download again and it continues from the last finished part.':
     'Держите Dayline открытым, экран включённым, подключение — по Wi-Fi. Загрузка идёт частями: если она остановится, нажмите «Загрузить» снова — она продолжится с последней готовой части.',
   'Preparing the model on this phone. This can take a minute.': 'Подготавливаем модель на телефоне. Это может занять минуту.',
+  'AI model': 'ИИ-модель', 'Small and fast': 'Маленькая и быстрая', 'Larger and smarter': 'Побольше и поумнее',
+  'Download {size}. Starts on most phones. Good for short answers and simple advice.': 'Загрузка {size}. Запускается на большинстве телефонов. Подходит для коротких ответов и простых советов.',
+  'Download {size}. Better answers, but needs a recent phone with 8 GB of memory or more.': 'Загрузка {size}. Ответы лучше, но нужен современный телефон с памятью от 8 ГБ.',
+  'about 0.6 GB': 'около 0,6 ГБ',
+  'Last time, the model stopped while it was starting. The phone probably ran out of memory. Choose the small model, or close other apps and try again.':
+    'В прошлый раз модель остановилась при запуске — вероятно, телефону не хватило памяти. Выберите маленькую модель или закройте другие приложения и попробуйте снова.',
+  'Downloading {name}…': 'Загружаем {name}…', 'Starting {name}…': 'Запускаем {name}…',
+  'Preparing the model on this phone. This can take a minute or two; close other apps to give it more memory.': 'Подготавливаем модель на телефоне. Это может занять минуту-две; закройте другие приложения, чтобы освободить память.',
+  'The AI assistant is on ({name}).': 'ИИ-ассистент включён ({name}).', 'Switch to the larger model': 'Перейти на большую модель', 'Switch to the small model': 'Перейти на маленькую модель',
+  'Try again': 'Попробовать снова', 'The AI model stopped while it was starting.': 'ИИ-модель остановилась при запуске.', 'Use the small model instead': 'Использовать маленькую модель', 'Delete the download': 'Удалить загрузку',
+  'The download is {size}. Use Wi-Fi, and make sure the phone has that much free space.': 'Размер загрузки: {size}. Используйте Wi-Fi и проверьте, хватает ли места.',
+  'The model did not start within 4 minutes. This phone is probably short of memory for it.': 'Модель не запустилась за 4 минуты. Вероятно, телефону не хватает памяти.',
+  'Adds an assistant to the Helper tab: chat about your tasks and get advice for each one. It runs on this phone, so after the one-time download it works offline and nothing you write leaves the phone.':
+    'Добавляет ассистента во вкладку «Помощник»: обсуждайте задачи и получайте советы по каждой. Он работает на этом телефоне, поэтому после однократной загрузки работает без интернета и ничего не отправляет.',
   'Pause': 'Пауза', 'Download (continue)': 'Загрузить (продолжить)', 'Cancel and delete the download': 'Отменить и удалить загрузку', 'Download removed': 'Загрузка удалена',
   '{done} of {size} already downloaded.': 'Уже загружено: {done} из {size}.',
   'Connection is slow. Trying again…': 'Медленное соединение. Пробуем снова…', 'Waiting for the internet…': 'Ждём подключения к интернету…', 'Saving…': 'Сохраняем…',

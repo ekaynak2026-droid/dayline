@@ -73,7 +73,8 @@ export function Assistant() {
   const [err, setErr] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { startAi(); }, []);
+  // Start the model, unless it crashed the page last time (then the user decides).
+  useEffect(() => { if (!ai.crashed) startAi(); }, []);
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'nearest' }); }, [chat.length, live]);
 
   const ready = ai.status === 'ready';
@@ -129,6 +130,16 @@ export function Assistant() {
     setLive(''); setMode('');
   };
 
+  if (ai.crashed && ai.status !== 'loading' && ai.status !== 'ready') return (
+    <div className="bg-[var(--surface)] rounded-[20px] p-4 shadow-[var(--shadow)] grid gap-2">
+      <p className="m-0 text-[15px] font-semibold text-[var(--ink)]">{t('The AI model stopped while it was starting.')}</p>
+      <p className="m-0 text-[14px] text-[var(--muted)]">{t('Last time, the model stopped while it was starting. The phone probably ran out of memory. Choose the small model, or close other apps and try again.')}</p>
+      <div className="flex gap-4 flex-wrap">
+        <button type="button" onClick={() => { ai.crashed = false; startAi(); }} className={cls.link}>{t('Try again')}</button>
+        <button type="button" onClick={openSettings} className={cls.link}>{t('Open Settings')}</button>
+      </div>
+    </div>
+  );
   if (ai.status === 'unsupported' || ai.status === 'error') return (
     <div className="bg-[var(--surface)] rounded-[20px] p-4 shadow-[var(--shadow)] grid gap-2">
       <p className="m-0 text-[15px] font-semibold text-[var(--ink)]">{t(ai.status === 'unsupported' ? 'This browser cannot run the AI model.' : 'The AI assistant could not start.')}</p>

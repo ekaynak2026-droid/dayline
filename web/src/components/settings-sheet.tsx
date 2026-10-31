@@ -17,7 +17,7 @@ import { ensureVault, PinSheet } from './pin-sheet';
 import { InstallSteps } from './tasks-view';
 import { IconLock, IconOpen, IconSave } from './icons';
 import { Sheet, cls } from './ui';
-import { ai, aiEnabled, downloadSize, pauseDownload, removeAi, startAi, webgpuOk } from '@/lib/ai';
+import { ai, aiEnabled, aiModel, downloadSize, MODELS, pauseDownload, removeAi, setAiModel, startAi, switchAiModel, webgpuOk, type ModelChoice } from '@/lib/ai';
 import { sizeText } from '@/lib/files';
 
 export function openSettings() { openSheet(<SettingsSheet key={Date.now()} />); }
@@ -58,72 +58,96 @@ function SyncPanel() {
   );
 }
 
-/** The optional on-phone AI assistant (Gemma 4 E2B). */
+/** The optional on-phone AI assistant: choose a model, download it, switch or remove it. */
 function AiPanel() {
   useApp();
   const [step, setStep] = useState<'idle' | 'checking' | 'confirm' | 'nogpu' | 'remove'>('idle');
-  const on = aiEnabled();
+  const [pick, setPick] = useState<ModelChoice>(aiModel());
+  const on = aiEnabled(), cur = aiModel();
   const check = async () => {
     setStep('checking');
     if (!(await webgpuOk())) { setStep('nogpu'); return; }
-    await downloadSize();
+    // Choosing the small model frees the space of a large one downloaded earlier.
+    if (pick === 'small') await removeAi('large', false);
+    setAiModel(pick);
+    await downloadSize(pick);
     setStep('confirm');
   };
-  const sizeLabel = ai.size ? sizeText(ai.size) : t('about 1.5–2 GB');
-  const intro = <p className={cls.info}>{t('Adds an assistant to the Helper tab: chat about your tasks and get smarter advice for each one. It runs on this phone (Google Gemma 4 E2B), so after the one-time download it works offline and nothing you write leaves the phone.')}</p>;
+  const sizeLabel = ai.size ? sizeText(ai.size) : t(MODELS[pick].approx);
+  const intro = <p className={cls.info}>{t('Adds an assistant to the Helper tab: chat about your tasks and get advice for each one. It runs on this phone, so after the one-time download it works offline and nothing you write leaves the phone.')}</p>;
+  const choices = (
+    <div className="grid gap-2" role="radiogroup" aria-label={t('AI model')}>
+      {(['small', 'large'] as ModelChoice[]).map((m) => (
+        <button key={m} type="button" role="radio" aria-checked={pick === m} onClick={() => { setPick(m); if (step === 'confirm') setStep('idle'); }}
+          className={cls.choice + (pick === m ? ' !border-[var(--accent)] ring-1 ring-[var(--accent)]' : '')}>
+          <span className={`w-5 h-5 flex-none rounded-full border-2 ${pick === m ? 'border-[var(--accent)] bg-[var(--accent)] shadow-[inset_0_0_0_3px_var(--surface)]' : 'border-[var(--muted)]'}`} />
+          <span><b className="block text-[var(--ink)] text-[15px]">{t(m === 'small' ? 'Small and fast' : 'Larger and smarter')} · {MODELS[m].name}</b>
+            <span className="text-[13.5px] text-[var(--muted)]">{t(m === 'small' ? 'Download {size}. Starts on most phones. Good for short answers and simple advice.' : 'Download {size}. Better answers, but needs a recent phone with 8 GB of memory or more.', { size: t(MODELS[m].approx) })}</span></span>
+        </button>
+      ))}
+    </div>
+  );
+  const crashNote = ai.crashed && (
+    <p className="m-0 bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">{t('Last time, the model stopped while it was starting. The phone probably ran out of memory. Choose the small model, or close other apps and try again.')}</p>
+  );
 
   if (ai.status === 'downloading' || ai.status === 'loading') return (
     <div className="grid gap-2">
-      {intro}
       <div className="grid gap-1.5" role="status">
         <div className="flex justify-between gap-2 text-[14px] font-semibold text-[var(--ink)]">
-          <span>{t(ai.status === 'downloading' ? 'Downloading the AI model…' : 'Starting the AI model…')}</span>
+          <span>{t(ai.status === 'downloading' ? 'Downloading {name}…' : 'Starting {name}…', { name: MODELS[cur].name })}</span>
           <span className="tabular-nums">{ai.status === 'downloading' && ai.size ? `${sizeText(ai.done)} / ${sizeText(ai.size)}` : `${ai.progress}%`}</span>
         </div>
         <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden"><div className="h-full bg-[var(--accent)] transition-[width]" style={{ width: `${ai.progress}%` }} /></div>
         {ai.note && <p className="m-0 text-[13px] font-semibold text-[var(--sun-ink)]">{t(ai.note)}</p>}
         <p className="m-0 text-[13px] text-[var(--muted)]">{t(ai.status === 'downloading'
           ? 'Keep Dayline open with the screen on, on Wi-Fi. It downloads in small parts: if it stops, tap Download again and it continues from the last finished part.'
-          : 'Preparing the model on this phone. This can take a minute.')}</p>
+          : 'Preparing the model on this phone. This can take a minute or two; close other apps to give it more memory.')}</p>
         {ai.status === 'downloading' && <div><button type="button" onClick={pauseDownload} className={cls.ghost + ' pl-0'}>{t('Pause')}</button></div>}
-      </div>
-    </div>
-  );
-  if (ai.status === 'error' && !on) return (
-    <div className="grid gap-2">
-      {intro}
-      <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{t(ai.error)}</p>
-      {ai.size > 0 && ai.done > 0 && <p className="m-0 text-[13px] text-[var(--muted)]">{t('{done} of {size} already downloaded.', { done: sizeText(ai.done), size: sizeText(ai.size) })}</p>}
-      <div className="flex gap-2 flex-wrap">
-        <button type="button" onClick={() => startAi()} className={cls.primary}>{t('Download (continue)')}</button>
-        <button type="button" onClick={async () => { await removeAi(); toast('Download removed'); }} className={cls.ghost}>{t('Cancel and delete the download')}</button>
       </div>
     </div>
   );
   if (on && ai.status !== 'error') return (
     <div className="grid gap-2">
-      <p className={cls.info}><b className="text-[var(--ink)]">{t('The AI assistant is on.')}</b> {t('Open the Helper tab and choose Assistant. It is stored on this phone and works offline.')}</p>
-      {step !== 'remove'
-        ? <div><button type="button" onClick={() => setStep('remove')} className={cls.danger + ' pl-0'}>{t('Turn off and remove the model')}</button></div>
-        : <div className="flex flex-wrap gap-2 items-center text-[14px]"><span className="text-[var(--ink)]">{t('This frees the space it uses. You can download it again later.')}</span>
-            <button type="button" onClick={async () => { await removeAi(); setStep('idle'); toast('AI assistant removed'); }} className={cls.primary + ' !bg-[var(--danger)]'}>{t('Remove')}</button>
-            <button type="button" onClick={() => setStep('idle')} className={cls.ghost}>{t('Cancel')}</button></div>}
+      <p className={cls.info}><b className="text-[var(--ink)]">{t('The AI assistant is on ({name}).', { name: MODELS[cur].name })}</b> {t('Open the Helper tab and choose Assistant. It is stored on this phone and works offline.')}</p>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <button type="button" onClick={() => switchAiModel(cur === 'small' ? 'large' : 'small')} className={cls.link + ' py-1'}>{t(cur === 'small' ? 'Switch to the larger model' : 'Switch to the small model')}</button>
+        {step !== 'remove' && <button type="button" onClick={() => setStep('remove')} className={cls.link + ' py-1 !text-[var(--danger)]'}>{t('Turn off and remove the model')}</button>}
+      </div>
+      {step === 'remove' && <div className="flex flex-wrap gap-2 items-center text-[14px]"><span className="text-[var(--ink)]">{t('This frees the space it uses. You can download it again later.')}</span>
+        <button type="button" onClick={async () => { await removeAi(); setStep('idle'); toast('AI assistant removed'); }} className={cls.primary + ' !bg-[var(--danger)]'}>{t('Remove')}</button>
+        <button type="button" onClick={() => setStep('idle')} className={cls.ghost}>{t('Cancel')}</button></div>}
+    </div>
+  );
+  if (ai.status === 'error') return (
+    <div className="grid gap-2">
+      <p role="alert" className="m-0 text-[var(--danger)] text-[14px] font-semibold">{t(ai.error)}</p>
+      {ai.size > 0 && ai.done > 0 && ai.done < ai.size && <p className="m-0 text-[13px] text-[var(--muted)]">{t('{done} of {size} already downloaded.', { done: sizeText(ai.done), size: sizeText(ai.size) })}</p>}
+      <div className="flex gap-2 flex-wrap">
+        <button type="button" onClick={() => startAi()} className={cls.primary}>{t('Try again')}</button>
+        {cur === 'large' && <button type="button" onClick={() => switchAiModel('small')} className={cls.ghost + ' text-[var(--accent)]'}>{t('Use the small model instead')}</button>}
+        <button type="button" onClick={async () => { await removeAi(); toast('Download removed'); }} className={cls.ghost}>{t('Delete the download')}</button>
+      </div>
     </div>
   );
   return (
     <div className="grid gap-2">
       {intro}
+      {crashNote}
       {step === 'nogpu' || ai.status === 'unsupported'
         ? <p className={cls.info}><b className="text-[var(--ink)]">{t('This browser cannot run the AI model.')}</b> {t('It needs WebGPU: use Chrome on Android, or Safari on iPhone with iOS 26 or later.')}</p>
-        : step === 'confirm'
-          ? <div className="grid gap-2 bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">
-              <p className="m-0">{t('The download is {size}. Use Wi-Fi, and make sure the phone has that much free space. Phones with 6 GB of memory or more work best.', { size: sizeLabel })}</p>
-              <div className="flex gap-2 flex-wrap">
-                <button type="button" onClick={() => { setStep('idle'); startAi(); }} className={cls.primary}>{t('Download ({size})', { size: sizeLabel })}</button>
-                <button type="button" onClick={() => setStep('idle')} className={cls.ghost}>{t('Not now')}</button>
-              </div>
-            </div>
-          : <div><button type="button" disabled={step === 'checking'} onClick={check} className={cls.primary}>{t(step === 'checking' ? 'Checking this phone…' : 'Set up the AI assistant')}</button></div>}
+        : <>
+            {choices}
+            {step === 'confirm'
+              ? <div className="grid gap-2 bg-[var(--sun-soft)] text-[var(--sun-ink)] rounded-xl p-3 text-[14px]">
+                  <p className="m-0">{t('The download is {size}. Use Wi-Fi, and make sure the phone has that much free space.', { size: sizeLabel })}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button type="button" onClick={() => { setStep('idle'); startAi(); }} className={cls.primary}>{t('Download ({size})', { size: sizeLabel })}</button>
+                    <button type="button" onClick={() => setStep('idle')} className={cls.ghost}>{t('Not now')}</button>
+                  </div>
+                </div>
+              : <div><button type="button" disabled={step === 'checking'} onClick={check} className={cls.primary}>{t(step === 'checking' ? 'Checking this phone…' : 'Set up the AI assistant')}</button></div>}
+          </>}
     </div>
   );
 }
