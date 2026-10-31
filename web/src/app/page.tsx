@@ -8,6 +8,7 @@ import { lockVault } from '@/lib/vault';
 import { checkReminders, watchInstall } from '@/lib/device';
 import { onSyncReady, startSync } from '@/lib/sync';
 import { importFromOther } from '@/lib/import';
+import { startWorkbookClock } from '@/lib/workbook';
 import { TEST } from '@/lib/config';
 import { todayIso } from '@/lib/dates';
 import { asset } from '@/lib/config';
@@ -48,6 +49,7 @@ function startOnce() {
     if (!TEST) keepTestVersionData();
     checkReminders(); setInterval(checkReminders, 30000);
     startSync();
+    startWorkbookClock();
   });
   watchInstall();
   document.documentElement.lang = getLang();

@@ -36,6 +36,8 @@ export function t(en: string, vars?: Record<string, string | number>) {
   if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
   return s;
 }
+/** A text in both languages (for reading back labels the app wrote earlier in either language). */
+export function bothLangs(en: string) { const r = RU[en]; return [en, typeof r === 'string' ? r : en]; }
 /** Short weekday names, Monday first. */
 export const weekdays = () => (lang === 'ru' ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
 

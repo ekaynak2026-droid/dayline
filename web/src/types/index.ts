@@ -49,7 +49,27 @@ export interface Note {
   updated: number;
   files?: FileRef[];
   /** Set on pages of the copybook (sketches saved from the sketch pad). They show in the copybook, not in the notes list. */
-  book?: 'copybook';
+  book?: 'copybook' | 'workbook';
+  /** Only on the AI task workbook note: what the assistant wrote last time (see lib/workbook.ts). */
+  wb?: WorkbookMeta;
+}
+
+/** What the AI task workbook remembers between updates, so it can tell the user's edits from its own text. */
+export interface WorkbookMeta {
+  /** When the workbook was last brought up to date. */
+  last: number;
+  tasks: Record<string, WorkbookTaskMeta>;
+}
+export interface WorkbookTaskMeta {
+  /** A fingerprint of the task (text, date, time, files) when the assistant last wrote its tab. */
+  fp: string;
+  /** A fingerprint of the user's own edits on that tab at that time. */
+  user: string;
+  /** Exactly what the assistant wrote. Anything in the workbook that differs from this is the user's. */
+  // (No lists inside lists here: the online database cannot store them. Each row is its cells joined.)
+  ai: { summary: string; files: { name: string; text: string }[]; rows: string[]; next: string };
+  /** Items the user deleted from the list: never suggested again. */
+  removed: string[];
 }
 
 /** Locked notes, encrypted with the PIN. Only the encrypted text is ever stored. */
