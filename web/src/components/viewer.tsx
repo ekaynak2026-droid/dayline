@@ -8,14 +8,10 @@ import React, { useEffect, useRef } from 'react';
 import { app, emit, useApp } from '@/lib/store';
 import { showBlob } from '@/lib/files';
 import { asset } from '@/lib/config';
+import { loadVendor } from '@/lib/vendor';
 import { t } from '@/lib/i18n';
 
-const loaded: Record<string, Promise<unknown>> = {};
-const load = (src: string) => loaded[src] || (loaded[src] = new Promise((res, rej) => {
-  const s = document.createElement('script'); s.src = asset(src); s.onload = res;
-  s.onerror = () => { delete loaded[src]; rej(new Error('load')); };
-  document.head.append(s);
-}));
+const load = loadVendor;
 const ext = (n: string) => (String(n).split('.').pop() || '').toLowerCase();
 const esc = (s: string) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 

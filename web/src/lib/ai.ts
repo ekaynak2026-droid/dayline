@@ -94,6 +94,45 @@ export async function askAi(instructions: string, chat: ChatMsg[], onText: (s: s
   } finally { if (ctl === my) ctl = null; }
 }
 
+/** One piece of a question: text, or a file (photo or PDF) sent as it is. */
+export type AiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Asks Gemini for a JSON answer (used by the task workbook, which runs on its own in the background,
+ * so it has its own Stop and does not share the chat's). When Gemini is busy it waits and tries again.
+ */
+export async function askAiJson(instructions: string, parts: AiPart[], signal?: AbortSignal, maxTokens = 8000): Promise<unknown> {
+  const key = aiKey();
+  if (!key) throw new AiError('Add your Gemini key in Settings first.');
+  for (let attempt = 0; ; attempt++) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) throw offline();
+    let res: Response;
+    try {
+      res = await fetch(`${API}:generateContent`, {
+        method: 'POST', signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: instructions }] },
+          contents: [{ role: 'user', parts }],
+          generationConfig: { maxOutputTokens: maxTokens + 2000, responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: 'low' } },
+        }),
+      });
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      throw typeof navigator !== 'undefined' && !navigator.onLine ? offline() : new AiError('Could not reach Gemini. Check the internet connection and try again.');
+    }
+    // Busy or over the per-minute limit: wait a little and try again (three times at most).
+    if ((res.status === 429 || res.status >= 500) && attempt < 3) { await wait(20000 * (attempt + 1)); continue; }
+    if (!res.ok) throw await failure(res);
+    const o = await res.json();
+    const text = (o?.candidates?.[0]?.content?.parts || []).filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || '').join('');
+    try { return JSON.parse(text.trim().replace(/^```(json)?|```$/g, '')); }
+    catch { if (attempt < 1) continue; throw new AiError('The assistant did not answer in the expected way. Try again.'); }
+  }
+}
+
 /** Checks a key with a tiny question before it is saved. Returns '' when it works, else the reason. */
 export async function testKey(key: string): Promise<string> {
   try {
