@@ -48,6 +48,8 @@ export interface Note {
   locked: boolean;
   updated: number;
   files?: FileRef[];
+  /** Set on pages of the copybook (sketches saved from the sketch pad). They show in the copybook, not in the notes list. */
+  book?: 'copybook';
 }
 
 /** Locked notes, encrypted with the PIN. Only the encrypted text is ever stored. */

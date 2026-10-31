@@ -2,7 +2,8 @@
 // The sketch pad: a drawing page for quick drafts, like a notebook and pen (or a small Paint).
 // Tools: pen, marker, eraser, line, arrow, rectangle, ellipse and text, with colours, three sizes,
 // plain / grid / dotted paper, undo and redo. Drafts are kept on this phone; "Save to Notes" turns
-// a drawing into a photo note, which syncs like any other note.
+// a drawing into a photo note, which syncs like any other note. "Save page" adds it as a page of the
+// copybook in the Notes tab (also a note, so it syncs the same way).
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { app, save, toast } from '@/lib/store';
@@ -258,6 +259,20 @@ export function SketchPad() {
     ctx.scale(sc, sc); drawPaper(ctx, cur?.paper || 'plain'); ctx.drawImage(ink.current!, 0, 0);
     return c;
   };
+  /** True when anything is drawn on the page (the paper alone does not count). */
+  const hasDrawing = () => {
+    const c = ink.current; if (!c) return false;
+    const px = c.getContext('2d')!.getImageData(0, 0, PAGE_W, PAGE_H).data;
+    for (let i = 3; i < px.length; i += 4) if (px[i]) return true;
+    return false;
+  };
+  const toCopybook = async () => {
+    if (!hasDrawing()) { toast('Nothing drawn on this page yet'); return; }
+    const c = await flatten(1200);
+    app.S.notes.push({ id: uid(), type: 'text', title: cur?.title || t('Sketch'), body: '', items: [], photo: c.toDataURL('image/jpeg', 0.8), locked: false, updated: Date.now(), book: 'copybook' });
+    await save();
+    toast(t('Saved to the copybook, page {n}', { n: app.S.notes.filter((n) => n.book === 'copybook').length }));
+  };
   const toNote = async () => {
     const c = await flatten(1200);
     app.S.notes.push({ id: uid(), type: 'text', title: cur?.title || t('Sketch'), body: '', items: [], photo: c.toDataURL('image/jpeg', 0.8), locked: false, updated: Date.now() });
@@ -332,6 +347,7 @@ export function SketchPad() {
         <button type="button" onClick={undo} disabled={!ops.current.length} className={`${btn} ${on(false)} disabled:opacity-40 font-semibold text-sm`}>{t('Undo')}</button>
         <button type="button" onClick={redoOne} disabled={!redo.current.length} className={`${btn} ${on(false)} disabled:opacity-40 font-semibold text-sm`}>{t('Redo')}</button>
         <button type="button" onClick={clearPage} className={`${btn} ${on(false)} font-semibold text-sm`}>{t('Clear page')}</button>
+        <button type="button" onClick={toCopybook} className={`${btn} bg-[var(--accent)] text-[var(--accent-ink)] border-[var(--accent)] font-semibold text-sm`}>{t('Save page')}</button>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[13px] font-semibold text-[var(--muted)] mr-1">{t('Paper')}</span>

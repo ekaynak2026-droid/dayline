@@ -213,5 +213,13 @@ const RU: Record<string, string | string[]> = {
   'Paper': 'Бумага', 'Plain': 'Чистый', 'Grid': 'Клетка', 'Dots': 'Точки', 'Draft name': 'Название эскиза',
   'Save to Notes': 'Сохранить в заметки', 'Save as picture': 'Сохранить как картинку', 'Delete draft': 'Удалить эскиз', 'Delete this draft?': 'Удалить этот эскиз?', 'Keep it': 'Оставить',
   'Saved to Notes': 'Сохранено в заметки', 'Draft deleted': 'Эскиз удалён',
+  // copybook (sketch pad pages, kept in Notes)
+  'Save page': 'Сохранить лист', 'Nothing drawn on this page yet': 'На этом листе пока ничего не нарисовано',
+  'Saved to the copybook, page {n}': 'Сохранено в тетрадь, страница {n}',
+  'Copybook': 'Тетрадь', 'Sketches': 'Эскизы', 'Tap to open': 'Нажмите, чтобы открыть', 'Close the copybook': 'Закрыть тетрадь',
+  'No pages yet': 'Страниц пока нет', 'Draw something on the sketch pad and tap Save page.': 'Нарисуйте что-нибудь в блокноте для эскизов и нажмите «Сохранить лист».',
+  'Page {n} of {total}': 'Страница {n} из {total}', 'Previous page': 'Предыдущая страница', 'Next page': 'Следующая страница',
+  'Remove page': 'Удалить страницу', 'Remove this page?': 'Удалить эту страницу?', 'Page removed': 'Страница удалена',
+  'Open as picture': 'Открыть как картинку',
   'Drafts are saved on this phone as you draw. Save to Notes to keep a drawing on all your devices.': 'Эскизы сохраняются на этом телефоне по ходу рисования. Сохраните в заметки, чтобы рисунок был на всех устройствах.',
 };
