@@ -50,6 +50,8 @@ export interface Note {
   files?: FileRef[];
   /** Set on pages of the copybook (sketches saved from the sketch pad). They show in the copybook, not in the notes list. */
   book?: 'copybook' | 'workbook';
+  /** Only on result notes of the Mission skill: which task and keyword it answers (see lib/mission.ts). */
+  mission?: { task: string; key: string; fp: string };
   /** Only on the AI task workbook note: what the assistant wrote last time (see lib/workbook.ts). */
   wb?: WorkbookMeta;
 }
