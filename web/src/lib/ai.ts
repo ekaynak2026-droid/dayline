@@ -10,6 +10,10 @@ import { emit } from './store';
 export const MODEL = 'gemini-3.6-flash';
 const API = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}`;
 const KEY = 'dayline-gemini-key';
+/** How much Gemini thinks before answering: 'minimal', 'low', 'medium' or 'high'. More is more careful but slower. */
+const THINKING = 'medium';
+/** Room for the thinking on top of the answer itself. */
+const THINK_ROOM = 4000;
 
 export interface ChatMsg { role: 'user' | 'assistant'; content: string }
 
@@ -45,8 +49,7 @@ function body(instructions: string, chat: ChatMsg[], maxTokens: number) {
   return JSON.stringify({
     systemInstruction: { parts: [{ text: instructions }] },
     contents: chat.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-    // Little thinking keeps answers quick; thinking does not count towards the answer length.
-    generationConfig: { maxOutputTokens: maxTokens, thinkingConfig: { thinkingLevel: 'low' } },
+    generationConfig: { maxOutputTokens: maxTokens, thinkingConfig: { thinkingLevel: THINKING } },
   });
 }
 
@@ -65,7 +68,7 @@ export async function askAi(instructions: string, chat: ChatMsg[], onText: (s: s
     const res = await fetch(`${API}:streamGenerateContent?alt=sse`, {
       method: 'POST', signal: my.signal,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: body(instructions, chat, maxTokens + 2000),
+      body: body(instructions, chat, maxTokens + THINK_ROOM),
     });
     if (!res.ok || !res.body) throw await failure(res);
     const reader = res.body.getReader(), dec = new TextDecoder();
@@ -116,7 +119,7 @@ export async function askAiJson(instructions: string, parts: AiPart[], signal?: 
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: instructions }] },
           contents: [{ role: 'user', parts }],
-          generationConfig: { maxOutputTokens: maxTokens + 2000, responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: 'low' } },
+          generationConfig: { maxOutputTokens: maxTokens + THINK_ROOM, responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: THINKING } },
         }),
       });
     } catch (e) {
