@@ -160,7 +160,7 @@ const editsFp = (e: Edits) => hash(JSON.stringify([e.summary, e.files, e.rows, e
 const MAX_TEXT = 20000, MAX_INLINE = 4 * 1024 * 1024;
 const extOf = (n: string) => (n.split('.').pop() || '').toLowerCase();
 
-async function filePart(f: FileRef): Promise<AiPart[]> {
+export async function filePart(f: FileRef): Promise<AiPart[]> {
   const head = (s: string) => ({ text: `\n--- Attached file "${f.name}" ---\n${s}` });
   const rec = await getFile(f.id);
   if (!rec) return [head('(This file is not on this device yet, so it could not be read.)')];
