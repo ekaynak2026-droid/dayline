@@ -9,6 +9,7 @@ import { getLang, t } from '@/lib/i18n';
 import { AiError, askAi, stopAi, type ChatMsg } from '@/lib/ai';
 import { editTask } from './rows';
 import { cls } from './ui';
+import { Missions } from './missions';
 
 const dayDiff = (k: string) => Math.round((fromIso(k).getTime() - todayDate().getTime()) / 864e5);
 const whenText = (k: string) => { const d = dayDiff(k); return d === -1 ? t('1 day late') : d < 0 ? t('{n} days late', { n: -d }) : d === 0 ? t('Today') : d === 1 ? t('Tomorrow') : fmt(fromIso(k), { weekday: 'short', day: 'numeric', month: 'short' }); };
@@ -128,6 +129,7 @@ export function Assistant() {
 
   return (
     <div className="grid gap-3">
+      <Missions />
       <section className="bg-[var(--surface)] rounded-[20px] p-4 shadow-[var(--shadow)] grid gap-2.5">
         <p className="m-0 text-[15px] text-[var(--ink)]">{t('I read your open tasks and calendar and suggest how to get each one done. Your tasks and events are sent to Google Gemini only when you ask.')}</p>
         <div className="flex gap-2 flex-wrap items-center">
